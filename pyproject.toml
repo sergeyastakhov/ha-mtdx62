@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mtdx62-integration"
+version = "0.1.0"
+description = "Home Assistant integration for the MTD062-MB and MTD262-MB presence sensors"
+readme = "README.md"
+requires-python = ">=3.14"
+license = { text = "MIT" }
+authors = [{ name = "Sergey Astakhov", email = "sergeyastakhov@mail.ru" }]
+
+[project.urls]
+Homepage = "https://github.com/sergeyastakhov/ha-mtdx62"
+Repository = "https://github.com/sergeyastakhov/ha-mtdx62"
+Issues = "https://github.com/sergeyastakhov/ha-mtdx62/issues"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+  "ignore:.*asyncio_default_fixture_loop_scope.*:pytest.PytestDeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["A", "B", "E", "F", "I", "N", "RUF", "SIM", "UP"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+files = ["custom_components"]

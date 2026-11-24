@@ -1,0 +1,36 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "presence": {
+        "default": "mdi:radar"
+      }
+    },
+    "sensor": {
+      "illuminance": {
+        "default": "mdi:brightness-6"
+      },
+      "distance": {
+        "default": "mdi:signal-distance-variant"
+      },
+      "status": {
+        "default": "mdi:stethoscope",
+        "state": {
+          "self_check_in_progress": "mdi:timer-sand",
+          "ok": "mdi:check-circle-outline",
+          "self_test_failed": "mdi:alert-circle-outline",
+          "other_fault": "mdi:alert",
+          "radar_fault": "mdi:radar",
+          "rs485_fault": "mdi:serial-port",
+          "radar_and_rs485_fault": "mdi:alert-octagon-outline",
+          "unknown_code": "mdi:help-circle-outline"
+        }
+      },
+      "app_version": {
+        "default": "mdi:chip"
+      },
+      "radar_version": {
+        "default": "mdi:chip"
+      }
+    }
+  }
+}

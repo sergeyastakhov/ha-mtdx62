@@ -1,0 +1,125 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "menu_options": {
+          "tcp": "Modbus TCP",
+          "serial": "Serial port (Modbus RTU)"
+        }
+      },
+      "tcp": {
+        "title": "Connect over Modbus TCP",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "unit_id": "Unit ID",
+          "model": "Model"
+        },
+        "data_description": {
+          "host": "Hostname or IP address of the sensor or its Modbus TCP gateway.",
+          "port": "Modbus TCP port, 502 unless the gateway says otherwise.",
+          "unit_id": "Address of this sensor on the bus, 1 to 247.",
+          "model": "The sensor reports the same registers for both models, so pick the one on the ceiling."
+        }
+      },
+      "serial": {
+        "title": "Connect over a serial port",
+        "data": {
+          "device": "Serial port",
+          "baudrate": "Baud rate",
+          "parity": "Parity",
+          "stopbits": "Stop bits",
+          "unit_id": "Unit ID",
+          "model": "Model"
+        },
+        "data_description": {
+          "device": "Local serial port, or a port shared over the network by a serial proxy.",
+          "baudrate": "Must match the bus speed configured on the sensor.",
+          "parity": "Must match the sensor; the factory setting is odd parity.",
+          "stopbits": "Must match the sensor; the factory setting is one stop bit.",
+          "unit_id": "Address of this sensor on the bus, 1 to 247.",
+          "model": "The sensor reports the same registers for both models, so pick the one on the ceiling."
+        }
+      },
+      "reconfigure": {
+        "title": "Change connection",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "device": "Serial port",
+          "baudrate": "Baud rate",
+          "parity": "Parity",
+          "stopbits": "Stop bits",
+          "unit_id": "Unit ID",
+          "model": "Model"
+        },
+        "data_description": {
+          "host": "Hostname or IP address of the sensor or its Modbus TCP gateway.",
+          "port": "Modbus TCP port, 502 unless the gateway says otherwise.",
+          "device": "Local serial port, or a port shared over the network by a serial proxy.",
+          "baudrate": "Must match the bus speed configured on the sensor.",
+          "parity": "Must match the sensor.",
+          "stopbits": "Must match the sensor.",
+          "unit_id": "Address of this sensor on the bus, 1 to 247.",
+          "model": "The sensor reports the same registers for both models, so pick the one on the ceiling."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the sensor. Check the connection settings and its address on the bus.",
+      "connection_conflict": "This sensor is already used with different connection settings. Change those settings on the existing entry instead."
+    },
+    "abort": {
+      "already_configured": "This sensor is already configured.",
+      "reconfigure_successful": "Connection settings updated."
+    }
+  },
+  "selector": {
+    "model": {
+      "options": {
+        "mtd062-mb": "MTD062-MB (5.8 GHz)",
+        "mtd262-mb": "MTD262-MB (24 GHz)"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "presence": {
+        "name": "Presence"
+      }
+    },
+    "sensor": {
+      "illuminance": {
+        "name": "Illuminance"
+      },
+      "distance": {
+        "name": "Target distance"
+      },
+      "status": {
+        "name": "Device status",
+        "state": {
+          "self_check_in_progress": "Self-check in progress",
+          "ok": "Running",
+          "self_test_failed": "Self-test failed",
+          "other_fault": "Other fault",
+          "radar_fault": "Radar module fault",
+          "rs485_fault": "RS485 fault",
+          "radar_and_rs485_fault": "Radar and RS485 fault",
+          "unknown_code": "Unknown code"
+        }
+      },
+      "app_version": {
+        "name": "Application version"
+      },
+      "radar_version": {
+        "name": "Radar version"
+      }
+    }
+  },
+  "issues": {
+    "self_check_stuck": {
+      "title": "Presence sensor is stuck in self-check",
+      "description": "Sensor {name} has been reporting a self-check in progress for over a minute. Its measurements stay hidden until it reports that it is running. Power-cycle the sensor; if the code does not change, the device is faulty."
+    }
+  }
+}

@@ -1,0 +1,77 @@
+rules:
+  action-setup:
+    status: exempt
+    comment: The integration registers no actions; it only polls the sensor.
+  appropriate-polling:
+    status: done
+    comment: The sensor is polled every 5 seconds, one register block per device.
+  brands:
+    status: done
+    comment: brand/icon.png and brand/logo.png ship inside the integration.
+  common-modules:
+    status: done
+    comment: Shared entity code lives in entity.py, shared flow code in one helper.
+  config-flow:
+    status: done
+    comment: Both transports are configured through the UI, no YAML.
+  config-flow-test-coverage:
+    status: done
+    comment: Every step, error and abort branch of the config flow is covered.
+  dependency-transparency:
+    status: done
+    comment: The protocol lives in the published mtdx62 package on PyPI.
+  docs-actions:
+    status: exempt
+    comment: No actions, so nothing to document.
+  docs-high-level-description:
+    status: done
+  docs-installation-instructions:
+    status: done
+  docs-removal-instructions:
+    status: done
+  entity-event-setup:
+    status: exempt
+    comment: The sensor is polled; there are no device events to subscribe to.
+  entity-unique-id:
+    status: done
+    comment: Built from the config entry and the entity key, independent of the name.
+  has-entity-name:
+    status: done
+  runtime-data:
+    status: done
+    comment: The coordinator lives in entry.runtime_data.
+  test-before-configure:
+    status: done
+    comment: The flow reads the sensor through a temporary unit before creating the entry.
+  test-before-setup:
+    status: done
+    comment: The first refresh raises ConfigEntryNotReady when the sensor stays silent.
+  unique-config-entry:
+    status: done
+  action-exceptions:
+    status: exempt
+    comment: No actions.
+  config-entry-unloading:
+    status: done
+  docs-configuration-parameters:
+    status: exempt
+    comment: No options or configuration parameters to document in this version.
+  docs-installation-parameters:
+    status: done
+  entity-unavailable:
+    status: done
+    comment: Entities go unavailable after three failed polls instead of reporting stale data.
+  integration-owner:
+    status: done
+    comment: Listed in codeowners.
+  log-when-unavailable:
+    status: done
+    comment: One warning when the sensor goes silent, one info when it answers again.
+  parallel-updates:
+    status: done
+    comment: PARALLEL_UPDATES is zero in both platforms; the coordinator serialises reads.
+  reauthentication-flow:
+    status: exempt
+    comment: The sensor has no credentials, only link settings, which reconfigure handles.
+  test-coverage:
+    status: done
