@@ -103,6 +103,38 @@ async def test_serial_entry_is_created(hass: HomeAssistant, validating: AsyncMoc
     assert result["result"].unique_id == "serial:/dev/ttyUSB0:9600:N:1#3"
 
 
+@pytest.mark.parametrize(
+    "stopbits",
+    [
+        pytest.param("1", id="string-from-the-selector"),
+        pytest.param(1, id="number-from-the-frontend"),
+    ],
+)
+async def test_stop_bits_are_accepted_in_either_form(
+    hass: HomeAssistant, validating: AsyncMock, stopbits: str | int
+) -> None:
+    """A browser sends the option as a string, a test or a script may send a number."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "serial"}
+    )
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            "device": "/dev/ttyUSB0",
+            CONF_STOPBITS: stopbits,
+            CONF_UNIT_ID: 3,
+            CONF_MODEL: MODEL_MTD262,
+        },
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_STOPBITS] == 1
+
+
 async def test_unreachable_sensor_shows_an_error(
     hass: HomeAssistant, tcp_form: dict[str, Any]
 ) -> None:
