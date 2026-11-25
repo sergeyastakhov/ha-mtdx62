@@ -9,10 +9,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant import config_entries
+from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import HomeAssistantError
-from modbus_connection import ModbusTimeoutError
+from modbus_connection import ModbusConnectionError, ModbusTimeoutError
 from modbus_connection.mock import MockModbusUnit
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -172,6 +173,51 @@ async def test_link_conflict_shows_its_own_error(
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "connection_conflict"}
+
+
+async def test_a_failed_check_keeps_what_the_user_typed(
+    hass: HomeAssistant, tcp_form: dict[str, Any]
+) -> None:
+    """After a failure the form comes back with the settings, not the defaults."""
+    submitted = {**tcp_form, CONF_UNIT_ID: 9}
+    with patch(VALIDATE, new_callable=AsyncMock, side_effect=ModbusTimeoutError()):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "tcp"}
+        )
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], submitted)
+
+    assert result["type"] is FlowResultType.FORM
+    suggested = {
+        marker.schema: marker.description["suggested_value"]
+        for marker in result["data_schema"].schema
+        if getattr(marker, "description", None)
+    }
+    assert suggested[CONF_UNIT_ID] == 9
+    assert suggested[CONF_HOST] == submitted[CONF_HOST]
+
+
+async def test_a_port_that_cannot_be_opened_says_so(
+    hass: HomeAssistant, tcp_form: dict[str, Any]
+) -> None:
+    """A missing or busy port is a different problem from a silent sensor."""
+    with patch(
+        VALIDATE,
+        new_callable=AsyncMock,
+        side_effect=ModbusConnectionError("could not open serial port"),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "tcp"}
+        )
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], tcp_form)
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_open_link"}
 
 
 async def test_adding_the_same_sensor_twice_aborts(

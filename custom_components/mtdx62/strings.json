@@ -67,6 +67,7 @@
     },
     "error": {
       "cannot_connect": "Could not reach the sensor. Check the connection settings and its address on the bus.",
+      "cannot_open_link": "Could not open this connection. Check that the port or host exists, is not busy with another program, and that the port settings match.",
       "connection_conflict": "This sensor is already used with different connection settings. Change those settings on the existing entry instead."
     },
     "abort": {

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from typing import Any
 
@@ -21,8 +22,9 @@ from homeassistant.helpers.selector import (
     SerialPortSelector,
     TextSelector,
 )
-from modbus_connection import ModbusError
+from modbus_connection import ModbusConnectionError, ModbusError
 from mtdx62_modbus_library import Mtdx62Device
+from probatio import Schema
 
 from .const import (
     CONF_BAUDRATE,
@@ -45,6 +47,8 @@ from .const import (
     TYPE_TCP,
 )
 from .helpers import create_modbus_params, create_title, create_unique_id
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _number(minimum: int, maximum: int) -> probatio.All[int]:
@@ -139,17 +143,33 @@ class Mtdx62ConfigFlow(ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(title=create_title(data), data=data)
         return self.async_show_form(
             step_id=connection_type,
-            data_schema=SCHEMAS[connection_type],
+            data_schema=self._form(connection_type, user_input),
             errors=errors,
         )
+
+    def _form(self, connection_type: str, user_input: dict[str, Any] | None) -> Schema:
+        """The form, prefilled with what the user just typed when a check failed.
+
+        Without this the browser falls back to the defaults and the user has to
+        retype the port and the address after every failed attempt.
+        """
+        schema = SCHEMAS[connection_type]
+        if user_input is None:
+            return schema
+        return self.add_suggested_values_to_schema(schema, user_input)
 
     async def _async_check(self, data: Mapping[str, Any]) -> dict[str, str]:
         """Report why the device could not be reached, if it could not."""
         try:
             await _async_validate(self.hass, data)
-        except ModbusError:
+        except ModbusConnectionError as err:
+            _LOGGER.debug("cannot open the link %s: %s", create_unique_id(data), err)
+            return {"base": "cannot_open_link"}
+        except ModbusError as err:
+            _LOGGER.debug("no answer from %s: %s", create_unique_id(data), err)
             return {"base": "cannot_connect"}
-        except HomeAssistantError:
+        except HomeAssistantError as err:
+            _LOGGER.debug("the link %s is taken: %s", create_unique_id(data), err)
             return {"base": "connection_conflict"}
         return {}
 
