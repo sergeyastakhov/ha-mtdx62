@@ -7,6 +7,20 @@ The sensor detects a person by breathing and small movements, not just by motion
 reporting presence for someone sitting still. This integration turns that into an occupancy
 binary sensor, adds illuminance and target distance, and exposes the device's own health.
 
+![Overview of the sensor with the infrared remote](docs/images/device-overview.webp)
+
+The sensor is a ceiling-mounted radar unit with an RS485 interface, configured over the bus or
+with an infrared remote. It reaches Home Assistant through Home Assistant's own
+[Modbus](https://www.home-assistant.io/integrations/modbus/) integration: this integration never
+opens the port itself, so several sensors on one bus, and other Modbus devices, share the
+connection.
+
+![Side view of the sensor](docs/images/device-side.webp)
+
+Dimensions, the internals of both radio versions and everything about the protocol — register
+map, health codes, what the device does when the bus is cut — live in the
+[library repository](https://github.com/sergeyastakhov/mtdx62-modbus-library#the-device).
+
 ## Supported devices
 
 | Model | Radio | Connection |
@@ -15,6 +29,13 @@ binary sensor, adds illuminance and target distance, and exposes the device's ow
 | MTD262-MB | 24 GHz | RS485 (Modbus RTU) or a Modbus TCP gateway |
 
 Both models report the same registers, so the model is selected when the device is added.
+
+The same housing is also made without Modbus: the **MTD061-RC** (5.8 GHz) and **MTD261-RC**
+(24 GHz) switch a dry contact — a relay up to 24 V and 100 mA — and know nothing about Modbus.
+Those are not supported here; their signal goes to a binary input or a smart relay.
+
+Devices that look the same are sold under other names, and Bluetooth variants exist. Only a model
+whose name ends in `-MB` speaks Modbus RTU; check the label on the back before buying.
 
 ## Installation
 
