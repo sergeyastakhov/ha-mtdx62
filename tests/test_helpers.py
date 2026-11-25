@@ -93,3 +93,18 @@ def test_the_hub_holding_the_same_port_is_named(hass: HomeAssistant) -> None:
     assert yaml_hub_for(hass, serial("/dev/ttyAMA0")) == "default"
     assert yaml_hub_for(hass, serial("/dev/ttyAMA4")) is None
     assert yaml_hub_for(hass, {CONF_TYPE: TYPE_TCP}) is None
+
+
+def test_a_hub_using_a_link_to_the_same_port_is_found(hass: HomeAssistant, tmp_path: Path) -> None:
+    """`/dev/serial0` is usually a link to `/dev/ttyAMA0`, and the hub keeps its own name."""
+    device = tmp_path / "ttyAMA0"
+    device.write_text("", encoding="utf-8")
+    alias = tmp_path / "serial0"
+    try:
+        os.symlink(device, alias)
+    except OSError, NotImplementedError:
+        pytest.skip("this platform does not allow creating symbolic links")
+
+    hass.data[YAML_HUBS_STORE] = {"modbus_hub_0": FakeHub(str(alias))}
+
+    assert yaml_hub_for(hass, serial(str(device))) == "modbus_hub_0"

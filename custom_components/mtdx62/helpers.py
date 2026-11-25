@@ -155,11 +155,25 @@ def yaml_hubs_using(hass: HomeAssistant) -> list[tuple[str, str]]:
 
 
 def yaml_hub_for(hass: HomeAssistant, data: Mapping[str, Any]) -> str | None:
-    """The hub name that already holds exactly this device, if any."""
+    """The hub name that already holds this device, under any of its names.
+
+    ``/dev/serial0`` is usually a link to ``/dev/ttyAMA0``, and the hub keeps the
+    name it was configured with, so comparing the strings alone misses the clash
+    that then shows up as a failed open.
+    """
     if data[CONF_TYPE] != TYPE_SERIAL:
         return None
-    device = str(data[CONF_DEVICE])
+    device = Path(str(data[CONF_DEVICE]))
+    try:
+        wanted = device.resolve()
+    except OSError:
+        wanted = device
     for name, port in yaml_hubs_using(hass):
-        if port == device:
+        if port == str(data[CONF_DEVICE]):
             return name
+        try:
+            if Path(port).resolve() == wanted:
+                return name
+        except OSError:
+            continue
     return None

@@ -119,6 +119,11 @@ register values and firmware versions, with the serial port path redacted.
 - **"This sensor is already used with different connection settings"** — the same device is
   already configured with other link settings. Change them in the existing entry instead of
   adding a second one.
+- **An error shows as a bare key, such as `cannot_open_link`** — the browser keeps the
+  translation cache of Home Assistant and does not refresh it when a custom integration is
+  updated, so texts added in that update are missing from the cache. Reload the page with
+  `Ctrl+Shift+R`, or open Home Assistant in a private window. Restarting Home Assistant does not
+  help: the cache lives in the browser.
 - **Presence stays on after everyone left** — that is the sensor's departure delay, set on the
   device. Check the device status entity for a health code.
 
