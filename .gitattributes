@@ -1,0 +1,4 @@
+# Keep line endings consistent: the repository stores LF, whatever the working copy.
+* text=auto eol=lf
+
+*.png binary
