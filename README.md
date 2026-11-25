@@ -37,6 +37,10 @@ Those are not supported here; their signal goes to a binary input or a smart rel
 Devices that look the same are sold under other names, and Bluetooth variants exist. Only a model
 whose name ends in `-MB` speaks Modbus RTU; check the label on the back before buying.
 
+These are OEM units: the factory prints whichever brand a customer orders, so the device carries no
+manufacturer logo. The icon and logo in `brand/` are a drawing of the sensor itself, not a
+trademark, and they will stay that way until a vendor with its own branding adopts the hardware.
+
 ## Installation
 
 The integration is distributed through the [Marketplace](https://www.home-assistant.io/integrations/marketplace):
@@ -93,8 +97,9 @@ register values and firmware versions, with the serial port path redacted.
 ## Known limitations
 
 - The sensor's configuration (detection range, delays, sensitivity, light threshold) is **read
-  only**. Changing it from Home Assistant is not implemented yet; use the infrared remote the
-  sensor ships with.
+  only**. Writing it from Home Assistant is the next piece of work; until then use the infrared
+  remote the sensor ships with. The integration does not write to the device at all, so nothing here
+  can leave it in a state you cannot undo with the remote.
 - Electronics in metal enclosures, elevators and metal-panel rooms break the radar's readings;
   that is a property of the sensor, not of this integration.
 - A reading that the vendor documented ambiguously (two parameter registers) is reported in
@@ -139,6 +144,26 @@ The protocol lives in a separate package, [`mtdx62-modbus-library`](https://pypi
 imported as `mtdx62_modbus_library`, built on
 Home Assistant's `modbus-connection`. The integration only wires that package to entities and the
 config flow; requirements and design live in `openspec/`.
+
+The rules this integration follows are shared with every other device integration and kept in
+[`ha-integration-workspace`](https://github.com/sergeyastakhov/ha-integration-workspace):
+
+- [`conventions/modbus-setup`](https://github.com/sergeyastakhov/ha-integration-workspace/blob/main/openspec/specs/conventions/modbus-setup/spec.md)
+  — how a device is taken from "add integration" to working entities: defaults that need no
+  editing, a check before the entry is created, one entry per bus address.
+- [`conventions/config-flow-errors`](https://github.com/sergeyastakhov/ha-integration-workspace/blob/main/openspec/specs/conventions/config-flow-errors/spec.md)
+  — one cause per message, and the form keeps what you typed.
+- [`conventions/live-verification`](https://github.com/sergeyastakhov/ha-integration-workspace/blob/main/openspec/specs/conventions/live-verification/spec.md)
+  — a release is checked on a running Home Assistant with the real device, and the result is written
+  down in [`docs/live-check.md`](docs/live-check.md).
+
+They are not repeated here on purpose. A rule that holds for every integration changes in that
+repository, not in this one, so this README only describes what is specific to the MTDx62.
+
+Both repositories are published from that workspace, which keeps the rules, the integration and the
+protocol library side by side while they are being developed. Each one is pushed to its own
+repository as an ordinary commit, so this repository is a copy of the integration folder and needs
+nothing from the workspace to build or install.
 
 ## Author
 
