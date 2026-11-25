@@ -104,6 +104,17 @@ register values and firmware versions, with the serial port path redacted.
 
 - **"Could not reach the sensor"** — check the address on the bus, the baud rate and parity, and
   that no other program holds the serial port.
+- **"Could not open this connection"** — the port exists but will not open. Two causes are common
+  on a Raspberry Pi. A `modbus:` entry in `configuration.yaml` is served by the legacy hub, which
+  opens the port through its own pymodbus client and is not part of the shared connection
+  registry, so the port looks free from here until the open fails: remove the sensor from the
+  YAML setup, or point it elsewhere. On an older stack a connection could also stay half-closed
+  after a timeout
+  ([modbus-connection#269](https://github.com/home-assistant-libs/modbus-connection/issues/269)),
+  which `modbus-connection` 4.12.8 stopped doing; Home Assistant 2026.11 ships it.
+- **"The port is already open as …"** — the same device is reached through two spellings, such as
+  a `/dev/serial/by-id/…` symlink and `/dev/ttyUSB0`. Home Assistant tells connections apart by
+  the path string, so use the name it gives you in both places.
 - **"This sensor is already used with different connection settings"** — the same device is
   already configured with other link settings. Change them in the existing entry instead of
   adding a second one.

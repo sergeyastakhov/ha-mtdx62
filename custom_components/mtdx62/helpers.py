@@ -24,6 +24,9 @@ from .const import (
 # Where the modbus component keeps the connections it shares. Its own config flow
 # would report a clash, but only when the path string matches exactly, so a port
 # reached through two spellings of the same device looks free until the open fails.
+# A `modbus:` setup in configuration.yaml is not listed here at all: it holds the
+# port outside this registry, which is why a YAML-owned UART cannot be opened from
+# a config flow and no clash is reported.
 CONNECTIONS_STORE = "modbus_connections"
 
 
