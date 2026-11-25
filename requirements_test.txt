@@ -1,9 +1,10 @@
-# What the Home Assistant modbus integration needs at runtime. The test harness
-# installs homeassistant itself but not its integrations' requirements, so the
-# modbus component fails to import (serialx) unless these are present.
+# What the modbus integration of the Home Assistant under test needs, plus the floor the
+# library requires. The test harness still ships HA 2026.10, whose modbus pins
+# modbus-connection 4.12.4; the library needs 4.12.8, the release that keeps a link open
+# on a longer timeout and the one HA 2026.11 ships. Both suites pass on this combination.
 pymodbus==3.13.1
-modbus-connection[tmodbus]==4.12.4
-tmodbus==0.6.2
+modbus-connection[tmodbus]==4.12.8
+tmodbus==1.1.0
 
 mtdx62-modbus-library==0.3.1
 pytest-homeassistant-custom-component==0.13.375

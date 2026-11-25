@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Generator, Mapping
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -31,6 +32,7 @@ from custom_components.mtdx62.const import (
     TYPE_SERIAL,
     TYPE_TCP,
 )
+from custom_components.mtdx62.helpers import YAML_HUBS_STORE
 
 VALIDATE = "custom_components.mtdx62.config_flow._async_validate"
 
@@ -248,6 +250,64 @@ async def test_a_missing_serial_device_says_it_is_missing(
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "port_missing"}
     assert result["description_placeholders"]["link"] == missing
+
+
+async def test_a_failed_reconfigure_keeps_what_the_user_typed(
+    hass: HomeAssistant,
+    validating: AsyncMock,
+    mock_entry: MockConfigEntry,
+    tcp_form: dict[str, Any],
+) -> None:
+    """The reconfigure form keeps the edited address, not the stored one."""
+    mock_entry.add_to_hass(hass)
+
+    with patch(VALIDATE, new_callable=AsyncMock, side_effect=ModbusTimeoutError()):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={
+                "source": config_entries.SOURCE_RECONFIGURE,
+                "entry_id": mock_entry.entry_id,
+            },
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**tcp_form, CONF_UNIT_ID: 9}
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+    suggested = {
+        marker.schema: marker.description["suggested_value"]
+        for marker in result["data_schema"].schema
+        if getattr(marker, "description", None)
+    }
+    assert suggested[CONF_UNIT_ID] == 9
+
+
+async def test_a_port_held_by_a_yaml_setup_is_named(
+    hass: HomeAssistant, validating: AsyncMock
+) -> None:
+    """A `modbus:` entry in configuration.yaml keeps its port to itself."""
+    hass.data[YAML_HUBS_STORE] = {"default": SimpleNamespace(endpoint=("serial", "/dev/ttyAMA0"))}
+    with patch(
+        VALIDATE,
+        new_callable=AsyncMock,
+        side_effect=ModbusConnectionError("could not open serial port /dev/ttyAMA0"),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "serial"}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {"device": "/dev/ttyAMA0", CONF_UNIT_ID: 1, CONF_MODEL: MODEL_MTD262},
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "port_used_by_yaml_hub"}
+    assert result["description_placeholders"]["hub"] == "default"
+    assert result["description_placeholders"]["link"] == "/dev/ttyAMA0"
 
 
 async def test_adding_the_same_sensor_twice_aborts(

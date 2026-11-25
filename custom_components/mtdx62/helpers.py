@@ -24,10 +24,13 @@ from .const import (
 # Where the modbus component keeps the connections it shares. Its own config flow
 # would report a clash, but only when the path string matches exactly, so a port
 # reached through two spellings of the same device looks free until the open fails.
-# A `modbus:` setup in configuration.yaml is not listed here at all: it holds the
-# port outside this registry, which is why a YAML-owned UART cannot be opened from
-# a config flow and no clash is reported.
 CONNECTIONS_STORE = "modbus_connections"
+
+# A `modbus:` setup in configuration.yaml is served by the legacy hub, which opens
+# the port through its own client and lives in a different place. Those hubs are
+# what a config flow cannot share with, and the reason a YAML-owned UART reports
+# "could not open" while another integration is happily polling it.
+YAML_HUBS_STORE = "modbus"
 
 
 def create_modbus_params(data: Mapping[str, Any]) -> ModbusTcpParams | ModbusSerialParams:
@@ -86,9 +89,10 @@ def serial_port_exists(data: Mapping[str, Any]) -> bool:
 def present_serial_ports() -> list[str]:
     """Serial devices worth naming when a port will not open.
 
-    USB adapters show up under ``/dev/serial/by-id`` with a stable name and as
-    ``ttyUSB*`` or ``ttyACM*``. UARTs on the board itself are listed too, because
-    picking one of those instead of the adapter is a common mistake.
+    A stable name appears under ``/dev/serial/by-id``; the same device is also
+    reachable as ``ttyUSB*``, ``ttyACM*`` or a board UART such as ``ttyAMA*``. All
+    of them are listed, because picking one of the other names of the same port is
+    a common mistake.
     """
     patterns = ("serial/by-id/*", "ttyUSB*", "ttyACM*", "ttyAMA*")
     found: set[str] = set()
@@ -132,4 +136,30 @@ def same_device_under_another_path(hass: HomeAssistant, data: Mapping[str, Any])
                 return held
         except OSError:
             continue
+    return None
+
+
+def yaml_hubs_using(hass: HomeAssistant) -> list[tuple[str, str]]:
+    """Serial ports a `modbus:` setup in configuration.yaml holds, with the hub name.
+
+    The hub keeps its port open for itself and is not part of the shared registry,
+    so a config flow can neither see it as taken nor share it.
+    """
+    hubs = hass.data.get(YAML_HUBS_STORE) or {}
+    found: list[tuple[str, str]] = []
+    for name, hub in hubs.items():
+        endpoint = getattr(hub, "endpoint", None)
+        if isinstance(endpoint, tuple) and len(endpoint) == 2 and endpoint[0] == "serial":
+            found.append((str(name), str(endpoint[1])))
+    return sorted(found)
+
+
+def yaml_hub_for(hass: HomeAssistant, data: Mapping[str, Any]) -> str | None:
+    """The hub name that already holds exactly this device, if any."""
+    if data[CONF_TYPE] != TYPE_SERIAL:
+        return None
+    device = str(data[CONF_DEVICE])
+    for name, port in yaml_hubs_using(hass):
+        if port == device:
+            return name
     return None

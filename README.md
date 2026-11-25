@@ -51,7 +51,8 @@ connection automatically: add each one separately with its own bus address, and 
 is reused.
 
 1. **Settings → Devices & services → Add integration → MTDx62 Presence Sensor**.
-2. Choose **Modbus TCP** for a gateway, or **Serial port (Modbus RTU)** for a USB-RS485 adapter.
+2. Choose **Modbus TCP** for a gateway, or **Serial port (Modbus RTU)** for a direct RS485 link:
+   a UART header on the board, an RS485 HAT, or an adapter.
 3. Enter the connection settings and the sensor's address on the bus (1–247).
 4. Pick the model that is on the ceiling.
 
@@ -113,7 +114,7 @@ register values and firmware versions, with the serial port path redacted.
   ([modbus-connection#269](https://github.com/home-assistant-libs/modbus-connection/issues/269)),
   which `modbus-connection` 4.12.8 stopped doing; Home Assistant 2026.11 ships it.
 - **"The port is already open as …"** — the same device is reached through two spellings, such as
-  a `/dev/serial/by-id/…` symlink and `/dev/ttyUSB0`. Home Assistant tells connections apart by
+  a `/dev/serial/by-id/…` link and `/dev/ttyUSB0`. Home Assistant tells connections apart by
   the path string, so use the name it gives you in both places.
 - **"This sensor is already used with different connection settings"** — the same device is
   already configured with other link settings. Change them in the existing entry instead of

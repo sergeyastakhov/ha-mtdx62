@@ -13,8 +13,11 @@ from homeassistant.core import HomeAssistant
 from custom_components.mtdx62.const import CONF_TYPE, TYPE_SERIAL, TYPE_TCP
 from custom_components.mtdx62.helpers import (
     CONNECTIONS_STORE,
+    YAML_HUBS_STORE,
     held_serial_links,
     same_device_under_another_path,
+    yaml_hub_for,
+    yaml_hubs_using,
 )
 
 
@@ -66,3 +69,27 @@ def test_a_network_link_has_no_held_port(hass: HomeAssistant) -> None:
     hass.data[CONNECTIONS_STORE] = {("serial", "/dev/ttyUSB0"): object()}
 
     assert same_device_under_another_path(hass, {CONF_TYPE: TYPE_TCP}) is None
+
+
+class FakeHub:
+    """Enough of a legacy ModbusHub for the checks."""
+
+    def __init__(self, port: str) -> None:
+        """Remember the endpoint the hub was given."""
+        self.endpoint = ("serial", port)
+
+
+def test_yaml_hubs_are_listed_with_their_names(hass: HomeAssistant) -> None:
+    """A YAML setup holds its port outside the shared registry."""
+    hass.data[YAML_HUBS_STORE] = {"default": FakeHub("/dev/ttyAMA0")}
+
+    assert yaml_hubs_using(hass) == [("default", "/dev/ttyAMA0")]
+
+
+def test_the_hub_holding_the_same_port_is_named(hass: HomeAssistant) -> None:
+    """Exactly the device submitted, held by a hub, is the clearest case."""
+    hass.data[YAML_HUBS_STORE] = {"default": FakeHub("/dev/ttyAMA0")}
+
+    assert yaml_hub_for(hass, serial("/dev/ttyAMA0")) == "default"
+    assert yaml_hub_for(hass, serial("/dev/ttyAMA4")) is None
+    assert yaml_hub_for(hass, {CONF_TYPE: TYPE_TCP}) is None
