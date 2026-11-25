@@ -20,7 +20,9 @@ TYPE_SERIAL: Final = "serial"
 
 DEFAULT_PORT: Final = 502
 DEFAULT_BAUDRATE: Final = 9600
-DEFAULT_PARITY: Final = "O"
+# The sensor ships with parity code 0 (no parity), which is also what it answered on
+# the bench: 9600 8N1.
+DEFAULT_PARITY: Final = "N"
 DEFAULT_STOPBITS: Final = 1
 DEFAULT_UNIT_ID: Final = 1
 

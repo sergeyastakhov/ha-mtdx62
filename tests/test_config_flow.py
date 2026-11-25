@@ -18,9 +18,13 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mtdx62.config_flow import _async_validate
 from custom_components.mtdx62.const import (
+    CONF_BAUDRATE,
     CONF_MODEL,
+    CONF_PARITY,
+    CONF_STOPBITS,
     CONF_TYPE,
     CONF_UNIT_ID,
+    DEFAULT_BAUDRATE,
     DOMAIN,
     MODEL_MTD262,
     TYPE_SERIAL,
@@ -74,7 +78,7 @@ async def test_tcp_entry_is_created(
 
 
 async def test_serial_entry_is_created(hass: HomeAssistant, validating: AsyncMock) -> None:
-    """The serial form keeps the factory parity and stop bits by default."""
+    """An untouched form submits the factory link: 9600, no parity, one stop bit."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -86,9 +90,6 @@ async def test_serial_entry_is_created(hass: HomeAssistant, validating: AsyncMoc
         result["flow_id"],
         {
             "device": "/dev/ttyUSB0",
-            "baudrate": 9600,
-            "parity": "O",
-            "stopbits": "1",
             CONF_UNIT_ID: 3,
             CONF_MODEL: MODEL_MTD262,
         },
@@ -96,7 +97,10 @@ async def test_serial_entry_is_created(hass: HomeAssistant, validating: AsyncMoc
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_TYPE] == TYPE_SERIAL
-    assert result["result"].unique_id == "serial:/dev/ttyUSB0:9600:O:1#3"
+    assert result["data"][CONF_BAUDRATE] == DEFAULT_BAUDRATE
+    assert result["data"][CONF_PARITY] == "N"
+    assert result["data"][CONF_STOPBITS] == 1
+    assert result["result"].unique_id == "serial:/dev/ttyUSB0:9600:N:1#3"
 
 
 async def test_unreachable_sensor_shows_an_error(

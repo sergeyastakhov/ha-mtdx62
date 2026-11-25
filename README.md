@@ -55,7 +55,7 @@ is reused.
 3. Enter the connection settings and the sensor's address on the bus (1–247).
 4. Pick the model that is on the ceiling.
 
-Default values match the factory settings: 9600 baud, odd parity, one stop bit, unit id 1, TCP
+Default values match the factory settings: 9600 baud, no parity, one stop bit, unit id 1, TCP
 port 502.
 
 ## Entities

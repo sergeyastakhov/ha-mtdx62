@@ -85,7 +85,9 @@ STEP_SERIAL_SCHEMA = probatio.Schema(
         probatio.Required(CONF_DEVICE): SerialPortSelector(),
         probatio.Required(CONF_BAUDRATE, default=DEFAULT_BAUDRATE): _number(1200, 57600),
         probatio.Required(CONF_PARITY, default=DEFAULT_PARITY): _select(PARITY_OPTIONS),
-        probatio.Required(CONF_STOPBITS, default=DEFAULT_STOPBITS): probatio.All(
+        # The selector yields strings, so the default has to be one too before the
+        # coercion back to an int; probatio validates defaults like any other value.
+        probatio.Required(CONF_STOPBITS, default=str(DEFAULT_STOPBITS)): probatio.All(
             _select([str(stopbits) for stopbits in STOPBIT_OPTIONS]),
             probatio.Coerce(int),
         ),
