@@ -220,6 +220,36 @@ async def test_a_port_that_cannot_be_opened_says_so(
     assert result["errors"] == {"base": "cannot_open_link"}
 
 
+async def test_a_missing_serial_device_says_it_is_missing(
+    hass: HomeAssistant, validating: AsyncMock
+) -> None:
+    """A path that does not exist is not the same as a port that will not open."""
+    missing = "/dev/ttyAMA99"
+    with patch(
+        VALIDATE,
+        new_callable=AsyncMock,
+        side_effect=ModbusConnectionError(f"could not open serial port {missing}"),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "serial"}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                "device": missing,
+                CONF_UNIT_ID: 1,
+                CONF_MODEL: MODEL_MTD262,
+            },
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "port_missing"}
+    assert result["description_placeholders"]["link"] == missing
+
+
 async def test_adding_the_same_sensor_twice_aborts(
     hass: HomeAssistant,
     validating: AsyncMock,

@@ -67,6 +67,8 @@
     },
     "error": {
       "cannot_connect": "Could not reach the sensor. Check the connection settings and its address on the bus.",
+      "port_held_elsewhere": "This port is already open as {held}. Home Assistant tells apart the paths it is given, so the same device under two names looks like two ports. Use {held} here, or in the existing Modbus entry instead of {link}.",
+      "port_missing": "Serial device {link} is not there. Pick the USB adapter from the list: it appears as /dev/serial/by-id/usb-..., not as a built-in /dev/ttyAMA*.",
       "cannot_open_link": "Could not open this connection. Check that the port or host exists, is not busy with another program, and that the port settings match.",
       "connection_conflict": "This sensor is already used with different connection settings. Change those settings on the existing entry instead."
     },

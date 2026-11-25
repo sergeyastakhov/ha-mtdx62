@@ -46,7 +46,16 @@ from .const import (
     TYPE_SERIAL,
     TYPE_TCP,
 )
-from .helpers import create_modbus_params, create_title, create_unique_id
+from .helpers import (
+    create_link_label,
+    create_modbus_params,
+    create_title,
+    create_unique_id,
+    held_serial_links,
+    present_serial_ports,
+    same_device_under_another_path,
+    serial_port_exists,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -134,9 +143,11 @@ class Mtdx62ConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Validate the link with a real read, then create the entry."""
         errors: dict[str, str] = {}
+        placeholders: dict[str, str] = {}
+        data: dict[str, Any] | None = None
         if user_input is not None:
             data = {CONF_TYPE: connection_type, **user_input}
-            errors = await self._async_check(data)
+            errors, placeholders = await self._async_check(data)
             if not errors:
                 await self.async_set_unique_id(create_unique_id(data))
                 self._abort_if_unique_id_configured()
@@ -145,6 +156,7 @@ class Mtdx62ConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id=connection_type,
             data_schema=self._form(connection_type, user_input),
             errors=errors,
+            description_placeholders=placeholders or None,
         )
 
     def _form(self, connection_type: str, user_input: dict[str, Any] | None) -> Schema:
@@ -158,20 +170,34 @@ class Mtdx62ConfigFlow(ConfigFlow, domain=DOMAIN):
             return schema
         return self.add_suggested_values_to_schema(schema, user_input)
 
-    async def _async_check(self, data: Mapping[str, Any]) -> dict[str, str]:
+    async def _async_check(self, data: Mapping[str, Any]) -> tuple[dict[str, str], dict[str, str]]:
         """Report why the device could not be reached, if it could not."""
+        placeholders = {"link": create_link_label(data)}
         try:
             await _async_validate(self.hass, data)
         except ModbusConnectionError as err:
             _LOGGER.debug("cannot open the link %s: %s", create_unique_id(data), err)
-            return {"base": "cannot_open_link"}
+            _LOGGER.debug(
+                "serial links the modbus component holds: %s",
+                ", ".join(held_serial_links(self.hass)) or "none",
+            )
+            held = same_device_under_another_path(self.hass, data)
+            if held is not None:
+                _LOGGER.debug("the same device is already open as %s", held)
+                return {"base": "port_held_elsewhere"}, {**placeholders, "held": held}
+            if not serial_port_exists(data):
+                _LOGGER.debug(
+                    "serial ports present: %s", ", ".join(present_serial_ports()) or "none"
+                )
+                return {"base": "port_missing"}, placeholders
+            return {"base": "cannot_open_link"}, placeholders
         except ModbusError as err:
             _LOGGER.debug("no answer from %s: %s", create_unique_id(data), err)
-            return {"base": "cannot_connect"}
+            return {"base": "cannot_connect"}, placeholders
         except HomeAssistantError as err:
             _LOGGER.debug("the link %s is taken: %s", create_unique_id(data), err)
-            return {"base": "connection_conflict"}
-        return {}
+            return {"base": "connection_conflict"}, placeholders
+        return {}, placeholders
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
@@ -180,9 +206,10 @@ class Mtdx62ConfigFlow(ConfigFlow, domain=DOMAIN):
         entry: ConfigEntry = self._get_reconfigure_entry()
         connection_type = entry.data[CONF_TYPE]
         errors: dict[str, str] = {}
+        placeholders: dict[str, str] = {}
         if user_input is not None:
             data = {CONF_TYPE: connection_type, **user_input}
-            errors = await self._async_check(data)
+            errors, placeholders = await self._async_check(data)
             if not errors:
                 unique_id = create_unique_id(data)
                 if self._another_entry_owns(unique_id, entry):
@@ -195,6 +222,7 @@ class Mtdx62ConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="reconfigure",
             data_schema=self.add_suggested_values_to_schema(SCHEMAS[connection_type], entry.data),
             errors=errors,
+            description_placeholders=placeholders or None,
         )
 
     def _another_entry_owns(self, unique_id: str, entry: ConfigEntry) -> bool:
