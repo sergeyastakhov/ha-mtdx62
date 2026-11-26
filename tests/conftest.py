@@ -66,9 +66,28 @@ def mock_unit() -> MockModbusUnit:
 def seed_readings(mock_unit: MockModbusUnit) -> MockModbusUnit:
     """Put a person in the room at 2.5 metres in dim light, sensor self-test passed.
 
-    The illuminance register carries tenths of a lux, so 42 is 4.2 lx.
+    The illuminance register carries tenths of a lux, so 42 is 4.2 lx. The
+    holding registers hold the factory settings, as a real sensor would.
     """
     mock_unit.input[0] = [1, 42, 250, 1, 0x0001, 0x0203, 0x0000, 0x0102]
+    for address, value in enumerate(
+        [
+            600,  # detection distance, 6.00 m
+            60,  # shielding distance, 0.60 m
+            10,  # entry delay, 0.10 s
+            30,  # departure delay, 30 s
+            7,  # trigger sensitivity
+            7,  # maintain sensitivity
+            60,  # entry indent, 0.60 m
+            1,  # unit id
+            9600,  # baudrate
+            0,  # parity: none
+            2,  # active report: off
+            0,  # light threshold: off
+            600,  # report interval
+        ]
+    ):
+        mock_unit.holding[address] = value
     return mock_unit
 
 

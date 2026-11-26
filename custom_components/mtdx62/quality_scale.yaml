@@ -54,13 +54,19 @@ rules:
   config-entry-unloading:
     status: done
   docs-configuration-parameters:
-    status: exempt
-    comment: No options or configuration parameters to document in this version.
+    status: done
+    comment: The README documents every setting, and the bus-settings option with its consequence.
   docs-installation-parameters:
     status: done
   entity-unavailable:
     status: done
     comment: Entities go unavailable after three failed polls instead of reporting stale data.
+  entity-category:
+    status: done
+    comment: Settings carry the config category; versions, status and the repair are diagnostic.
+  entity-device-class:
+    status: done
+    comment: Distance, duration and illuminance numbers use the matching device classes.
   integration-owner:
     status: done
     comment: Listed in codeowners.
@@ -69,7 +75,7 @@ rules:
     comment: One warning when the sensor goes silent, one info when it answers again.
   parallel-updates:
     status: done
-    comment: PARALLEL_UPDATES is zero in both platforms; the coordinator serialises reads.
+    comment: PARALLEL_UPDATES is zero in every platform; the coordinator serialises reads and writes.
   reauthentication-flow:
     status: exempt
     comment: The sensor has no credentials, only link settings, which reconfigure handles.

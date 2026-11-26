@@ -252,6 +252,38 @@ async def test_a_missing_serial_device_says_it_is_missing(
     assert result["description_placeholders"]["link"] == missing
 
 
+async def test_a_port_open_under_another_name_is_reported(
+    hass: HomeAssistant, validating: AsyncMock
+) -> None:
+    """The same device under two spellings looks free until the open fails."""
+    device = "/dev/ttyUSB0"
+    with (
+        patch(
+            VALIDATE,
+            new_callable=AsyncMock,
+            side_effect=ModbusConnectionError(f"could not open serial port {device}"),
+        ),
+        patch(
+            "custom_components.mtdx62.config_flow.same_device_under_another_path",
+            return_value="/dev/serial/by-id/usb-ftdi-1",
+        ),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "serial"}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {"device": device, CONF_UNIT_ID: 1, CONF_MODEL: MODEL_MTD262},
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "port_held_elsewhere"}
+    assert result["description_placeholders"]["held"] == "/dev/serial/by-id/usb-ftdi-1"
+
+
 async def test_a_failed_reconfigure_keeps_what_the_user_typed(
     hass: HomeAssistant,
     validating: AsyncMock,

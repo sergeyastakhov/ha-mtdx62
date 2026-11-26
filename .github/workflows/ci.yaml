@@ -36,6 +36,8 @@ jobs:
           pip install -r requirements_test.txt
       - name: Ruff format
         run: ruff format --check .
+      - name: Translations in step with strings.json
+        run: python scripts/check_translations.py
       - name: Library import (module naming)
         run: python -c "import mtdx62_modbus_library; print(mtdx62_modbus_library.__version__)"
       - name: Ruff check

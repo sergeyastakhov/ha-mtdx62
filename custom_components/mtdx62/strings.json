@@ -35,7 +35,7 @@
         "data_description": {
           "device": "Local serial port, or a port shared over the network by a serial proxy.",
           "baudrate": "Must match the bus speed configured on the sensor.",
-          "parity": "Must match the sensor; the factory setting is odd parity.",
+          "parity": "Must match the sensor; the factory setting is no parity.",
           "stopbits": "Must match the sensor; the factory setting is one stop bit.",
           "unit_id": "Address of this sensor on the bus, 1 to 247.",
           "model": "The sensor reports the same registers for both models, so pick the one on the ceiling."
@@ -118,12 +118,99 @@
       "radar_version": {
         "name": "Radar version"
       }
+    },
+    "number": {
+      "detection_distance": {
+        "name": "Detection range"
+      },
+      "shielding_distance": {
+        "name": "Shielding zone"
+      },
+      "entry_indent": {
+        "name": "Entry indent"
+      },
+      "entry_delay": {
+        "name": "Entry delay"
+      },
+      "departure_delay": {
+        "name": "Departure delay"
+      },
+      "trigger_sensitivity": {
+        "name": "Trigger sensitivity"
+      },
+      "maintain_sensitivity": {
+        "name": "Maintain sensitivity"
+      },
+      "light_threshold": {
+        "name": "Light threshold"
+      },
+      "unit_id": {
+        "name": "Bus address"
+      }
+    },
+    "select": {
+      "baudrate": {
+        "name": "Baud rate"
+      },
+      "parity": {
+        "name": "Parity",
+        "state": {
+          "none": "None",
+          "odd": "Odd",
+          "even": "Even"
+        }
+      }
     }
   },
   "issues": {
     "self_check_stuck": {
       "title": "Presence sensor is stuck in self-check",
       "description": "Sensor {name} has been reporting a self-check in progress for over a minute. Its measurements stay hidden until it reports that it is running. Power-cycle the sensor; if the code does not change, the device is faulty."
+    },
+    "bus_settings_changed": {
+      "title": "Bus settings of {name} were changed",
+      "description": "The sensor reports {setting} = {value} now, and this entry still uses the old connection settings, so it cannot be reached. Run **Reconfigure** on the entry and enter the new address, speed and parity."
+    }
+  },
+  "exceptions": {
+    "device_not_ready": {
+      "message": "The sensor is not ready to accept settings: it reports health code {code}."
+    },
+    "zones_do_not_fit": {
+      "message": "The shielding zone and the entry indent add up to {zones} m, which does not fit into a detection range of {detection} m."
+    },
+    "value_out_of_range": {
+      "message": "The sensor cannot store this value: {error}"
+    },
+    "device_rejected": {
+      "message": "The sensor refused the value."
+    },
+    "value_not_stored": {
+      "message": "The sensor stored {stored} instead of {requested}."
+    },
+    "no_answer": {
+      "message": "The sensor did not answer."
+    }
+  },
+  "options": {
+    "step": {
+      "bus_settings_confirm": {
+        "title": "Confirm",
+        "description": "The sensor will stop answering on the current settings as soon as one of the bus values is written. You will have to reconfigure the entry to reach it again.",
+        "data": {
+          "confirm": "I understand the sensor will be unreachable"
+        }
+      },
+      "init": {
+        "title": "Bus settings",
+        "description": "Changing the bus address, speed or parity breaks the link: the sensor starts answering on the new settings while this entry keeps the old ones, so its entities become unavailable. To get it back, run **Reconfigure** on the entry and enter the new connection settings.",
+        "data": {
+          "allow_bus_settings": "Allow changing the bus settings"
+        },
+        "data_description": {
+          "allow_bus_settings": "Turn this on to get number and select entities for the address, speed and parity."
+        }
+      }
     }
   }
 }

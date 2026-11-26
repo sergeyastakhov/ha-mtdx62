@@ -8,11 +8,17 @@ from typing import Any
 
 import probatio
 from homeassistant.components.modbus import async_get_temporary_unit
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.const import CONF_DEVICE, CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -27,7 +33,9 @@ from mtdx62_modbus_library import Mtdx62Device
 from probatio import Schema
 
 from .const import (
+    CONF_ALLOW_BUS_SETTINGS,
     CONF_BAUDRATE,
+    CONF_CONFIRM,
     CONF_MODEL,
     CONF_PARITY,
     CONF_STOPBITS,
@@ -113,6 +121,14 @@ STEP_SERIAL_SCHEMA = probatio.Schema(
 )
 
 SCHEMAS = {TYPE_TCP: STEP_TCP_SCHEMA, TYPE_SERIAL: STEP_SERIAL_SCHEMA}
+
+BUS_SETTINGS_SCHEMA = probatio.Schema(
+    {probatio.Required(CONF_ALLOW_BUS_SETTINGS, default=False): BooleanSelector()}
+)
+
+CONFIRM_SCHEMA = probatio.Schema(
+    {probatio.Required(CONF_CONFIRM, default=False): BooleanSelector()}
+)
 
 
 async def _async_validate(hass: HomeAssistant, data: Mapping[str, Any]) -> None:
@@ -209,6 +225,11 @@ class Mtdx62ConfigFlow(ConfigFlow, domain=DOMAIN):
             return {"base": "connection_conflict"}, placeholders
         return {}, placeholders
 
+    @staticmethod
+    def async_get_options_flow(config_entry: ConfigEntry) -> Mtdx62OptionsFlow:
+        """Offer the switch that unlocks the bus settings."""
+        return Mtdx62OptionsFlow()
+
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -248,3 +269,35 @@ class Mtdx62ConfigFlow(ConfigFlow, domain=DOMAIN):
             other.unique_id == unique_id and other.entry_id != entry.entry_id
             for other in self._async_current_entries()
         )
+
+
+class Mtdx62OptionsFlow(OptionsFlow):
+    """Let the user decide whether the sensor's bus settings may be changed here."""
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Ask whether the bus settings should be editable."""
+        if user_input is not None:
+            if user_input[CONF_ALLOW_BUS_SETTINGS]:
+                return await self.async_step_bus_settings_confirm()
+            return self.async_create_entry(data={CONF_ALLOW_BUS_SETTINGS: False})
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                BUS_SETTINGS_SCHEMA,
+                {
+                    CONF_ALLOW_BUS_SETTINGS: self.config_entry.options.get(
+                        CONF_ALLOW_BUS_SETTINGS, False
+                    )
+                },
+            ),
+        )
+
+    async def async_step_bus_settings_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """A switch is not enough for an action that makes the sensor unreachable."""
+        if user_input is not None:
+            return self.async_create_entry(
+                data={CONF_ALLOW_BUS_SETTINGS: bool(user_input.get(CONF_CONFIRM))}
+            )
+        return self.async_show_form(step_id="bus_settings_confirm", data_schema=CONFIRM_SCHEMA)

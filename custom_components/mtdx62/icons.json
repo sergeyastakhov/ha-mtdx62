@@ -31,6 +31,43 @@
       "radar_version": {
         "default": "mdi:chip"
       }
+    },
+    "number": {
+      "detection_distance": {
+        "default": "mdi:signal-distance-variant"
+      },
+      "shielding_distance": {
+        "default": "mdi:signal-distance-variant"
+      },
+      "entry_indent": {
+        "default": "mdi:signal-distance-variant"
+      },
+      "entry_delay": {
+        "default": "mdi:timer-sand"
+      },
+      "departure_delay": {
+        "default": "mdi:timer-sand-complete"
+      },
+      "trigger_sensitivity": {
+        "default": "mdi:radar"
+      },
+      "maintain_sensitivity": {
+        "default": "mdi:radar"
+      },
+      "light_threshold": {
+        "default": "mdi:brightness-6"
+      },
+      "unit_id": {
+        "default": "mdi:identifier"
+      }
+    },
+    "select": {
+      "baudrate": {
+        "default": "mdi:speedometer"
+      },
+      "parity": {
+        "default": "mdi:check-decagram-outline"
+      }
     }
   }
 }

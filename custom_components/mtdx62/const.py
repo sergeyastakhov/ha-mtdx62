@@ -14,6 +14,8 @@ CONF_MODEL: Final = "model"
 CONF_BAUDRATE: Final = "baudrate"
 CONF_PARITY: Final = "parity"
 CONF_STOPBITS: Final = "stopbits"
+CONF_ALLOW_BUS_SETTINGS: Final = "allow_bus_settings"
+CONF_CONFIRM: Final = "confirm"
 
 TYPE_TCP: Final = "tcp"
 TYPE_SERIAL: Final = "serial"
@@ -52,6 +54,26 @@ HEALTHY_STATUS_CODE: Final = 1
 SELF_CHECK_STUCK_AFTER: Final = timedelta(seconds=60)
 
 ISSUE_SELF_CHECK_STUCK: Final = "self_check_stuck"
+ISSUE_BUS_SETTINGS_CHANGED: Final = "bus_settings_changed"
+
+# Settings are read once a minute: the infrared remote changes them too, and
+# polling them at the measurement rate would double the traffic on the bus.
+SETTINGS_EVERY: Final = 12
+
+# Parameters that decide how the sensor answers. Writing one makes the sensor
+# unreachable on the current link at once, so they are hidden behind an option.
+BUS_SETTING_FIELDS: Final = ("unit_id", "baudrate", "parity")
+
+# Standard Modbus rates. The register accepts any value in 1200..57600, but a
+# number field invites 9601, which no device uses.
+BAUDRATE_OPTIONS: Final = ("1200", "2400", "4800", "9600", "19200", "38400", "57600")
+
+# Parity as the button on the sensor stores it: 0 none, 1 odd, 2 even. The names
+# differ from the N/E/O of the config flow because the select entity translates
+# its options through strings.json.
+BUS_PARITY_OPTIONS: Final = ("none", "odd", "even")
+BUS_PARITY_CODE_BY_OPTION: Final = {"none": 0, "odd": 1, "even": 2}
+BUS_PARITY_OPTION_BY_CODE: Final = {0: "none", 1: "odd", 2: "even"}
 
 # Register spaces exposed by the library that diagnostics dumps in raw form.
 RAW_DIAGNOSTIC_NAMES: Final = ("readings", "settings")

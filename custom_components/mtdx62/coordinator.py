@@ -7,18 +7,27 @@ from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
-from modbus_connection import ModbusError
-from mtdx62_modbus_library import DeviceStatus, Mtdx62Device, Readings
+from modbus_connection import ModbusError, ModbusExceptionError
+from mtdx62_modbus_library import (
+    DeviceStatus,
+    Mtdx62Device,
+    Readings,
+    WriteVerificationError,
+)
 
 from .const import (
     DOMAIN,
+    HEALTHY_STATUS_CODE,
+    ISSUE_BUS_SETTINGS_CHANGED,
     ISSUE_SELF_CHECK_STUCK,
     MAX_CONSECUTIVE_FAILURES,
     SCAN_INTERVAL,
     SELF_CHECK_STUCK_AFTER,
+    SETTINGS_EVERY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,6 +53,8 @@ class Mtdx62Coordinator(DataUpdateCoordinator[Readings]):
         self._reported_fault: int | None = None
         self._self_check_since: datetime | None = None
         self._self_check_issue_raised = False
+        self._polls = 0
+        self._bus_issue_raised = False
 
     async def _async_update_data(self) -> Readings:
         """Read the measurements, tolerating a single lost frame."""
@@ -63,9 +74,30 @@ class Mtdx62Coordinator(DataUpdateCoordinator[Readings]):
                 _LOGGER.info("%s: sensor is answering again", self.name)
                 self._unavailable_logged = False
 
+        if self._bus_issue_raised:
+            ir.async_delete_issue(self.hass, DOMAIN, ISSUE_BUS_SETTINGS_CHANGED)
+            self._bus_issue_raised = False
+
+        await self._async_update_settings()
         self._log_fault()
         self._track_self_check()
         return self.device.readings
+
+    async def _async_update_settings(self) -> None:
+        """Read the parameters at start, then once a minute.
+
+        They are changed by the infrared remote as well, so they have to be
+        re-read; polling them at the measurement rate would double the traffic.
+        A failed settings read must not mark the device unavailable: the
+        measurements came through.
+        """
+        self._polls += 1
+        if self._polls % SETTINGS_EVERY != 1:
+            return
+        try:
+            await self.device.async_update_settings()
+        except ModbusError as err:
+            _LOGGER.debug("%s: could not read settings: %s", self.name, err)
 
     def _log_unavailable(self) -> None:
         """Say the sensor is gone once, not on every failed poll."""
@@ -123,9 +155,124 @@ class Mtdx62Coordinator(DataUpdateCoordinator[Readings]):
             translation_placeholders={"name": self.config_entry.title},
         )
 
+    async def async_write_setting(self, field: str, value: float | int) -> None:
+        """Write one ordinary parameter, with the checks the sensor cannot do for us.
+
+        The health code is taken from the last poll: it is at most five seconds
+        old, and reading it again would double the traffic for a guard.
+        """
+        self._require_ready()
+        self._require_zones_fit(field, value)
+        try:
+            await self.device.settings.async_write(field, value)
+        except ValueError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="value_out_of_range",
+                translation_placeholders={"error": str(err)},
+            ) from err
+        except WriteVerificationError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="value_not_stored",
+                translation_placeholders={
+                    "requested": str(err.requested),
+                    "stored": str(err.stored),
+                },
+            ) from err
+        except ModbusExceptionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN, translation_key="device_rejected"
+            ) from err
+        except ModbusError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN, translation_key="no_answer"
+            ) from err
+        self.async_update_listeners()
+
+    async def async_write_bus_setting(self, field: str, value: int) -> None:
+        """Write a parameter that moves the sensor to another link.
+
+        There is no confirmation read on purpose: once the sensor accepts the
+        value it answers elsewhere, and the old link is already silent. The entry
+        keeps the old parameters, so the device becomes unreachable until the user
+        runs the reconfigure flow; a repair says so.
+        """
+        try:
+            await self.device.settings.write(field, value)
+        except ValueError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="value_out_of_range",
+                translation_placeholders={"error": str(err)},
+            ) from err
+        except ModbusError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN, translation_key="no_answer"
+            ) from err
+        _LOGGER.warning(
+            "%s: %s is now %s on the sensor; this entry still uses the old link",
+            self.name,
+            field,
+            value,
+        )
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            ISSUE_BUS_SETTINGS_CHANGED,
+            is_fixable=False,
+            is_persistent=True,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key=ISSUE_BUS_SETTINGS_CHANGED,
+            translation_placeholders={
+                "name": self.config_entry.title,
+                "setting": field,
+                "value": str(value),
+            },
+        )
+        self._bus_issue_raised = True
+
+    def _require_ready(self) -> None:
+        """Refuse to write while the sensor is booting or broken."""
+        code = None if self.data is None else self.data.status_code
+        if code == HEALTHY_STATUS_CODE:
+            return
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="device_not_ready",
+            translation_placeholders={"code": "unknown" if code is None else str(code)},
+        )
+
+    def _require_zones_fit(self, field: str, value: float | int) -> None:
+        """Check the rule the sensor enforces with an unhelpful exception 0x02."""
+        settings = self.device.settings
+        detection = value if field == "detection_distance" else settings.detection_distance
+        shielding = value if field == "shielding_distance" else settings.shielding_distance
+        indent = value if field == "entry_indent" else settings.entry_indent
+        if detection is None or shielding is None or indent is None:
+            return
+        # A sensor that has not been read yet reports zeros; the rule means nothing
+        # until there is a real range to fit the zones into.
+        if float(detection) <= 0:
+            return
+        zones = round(float(shielding) + float(indent), 2)
+        if zones < float(detection):
+            return
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="zones_do_not_fit",
+            translation_placeholders={
+                "zones": f"{zones:g}",
+                "detection": f"{float(detection):g}",
+            },
+        )
+
     @callback
     def async_clear_repairs(self) -> None:
-        """Drop the repair issue once the sensor moved on, or the entry unloaded."""
+        """Drop the repair issues once the sensor moved on, or the entry unloaded."""
+        if self._bus_issue_raised:
+            ir.async_delete_issue(self.hass, DOMAIN, ISSUE_BUS_SETTINGS_CHANGED)
+            self._bus_issue_raised = False
         if not self._self_check_issue_raised:
             return
         ir.async_delete_issue(self.hass, DOMAIN, ISSUE_SELF_CHECK_STUCK)

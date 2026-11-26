@@ -70,6 +70,7 @@ port 502.
 | Presence | someone is in the room | occupancy class, updated every 5 seconds |
 | Illuminance | ambient light as the sensor sees it | lux, tenth of a lux |
 | Target distance | distance to the detected target | metres, two decimals, disabled by default |
+| Settings | detection range, zones, delays, sensitivities, light threshold | eight adjustable numbers |
 | Device status | the sensor's own health code | diagnostic, disabled by default |
 | Application version | firmware of the sensor | diagnostic, disabled by default |
 | Radar version | firmware of the radar module | diagnostic, disabled by default |
@@ -80,6 +81,52 @@ unavailable instead of showing numbers nobody should trust; the device status en
 diagnostics keep working, so the reason is visible. The state is what the sensor reports: there is
 no extra filtering or debounce in Home Assistant. The entry delay, departure delay and sensitivity
 of the sensor itself decide how quickly presence clears.
+
+## Settings
+
+The sensor's parameters are adjustable from Home Assistant:
+
+| Setting | Unit | Range |
+|---|---|---|
+| Detection range | m | 1.0 – 10.0 |
+| Shielding zone | m | 0.3 – 10.0 |
+| Entry indent | m | 0.0 – 10.0 |
+| Entry delay | s | 0.0 – 5.0 |
+| Departure delay | s | 5 – 1500 |
+| Trigger sensitivity | — | 1 – 9 |
+| Maintain sensitivity | — | 1 – 9 |
+| Light threshold | lx | 0 – 420, `0` turns the function off |
+
+Values come from the sensor's register map as measured on a real unit, not only as the vendor table
+describes it. Two rules are worth knowing:
+
+- **The zones must fit inside the range.** The sensor requires `shielding zone + entry indent` to
+  stay below the detection range and answers with a Modbus exception `0x02` otherwise, which reads
+  like "illegal address". The integration checks it first and says which values do not fit.
+- **A write is not instant.** The sensor shows the previous value for up to half a second; the
+  integration retries the confirmation read for a second before reporting a failure. Settings are
+  re-read once a minute, so a change made with the infrared remote appears without a restart.
+
+The light threshold gates the sensor's own output in the vendor documentation (presence only while
+the room is darker than the threshold). That behaviour was not confirmed on a real unit — the flag
+depends on a person being in the room — so treat the threshold as a stored parameter, not as a
+verified gate.
+
+### Bus settings, off by default
+
+The bus address, speed and parity change **how the sensor answers**, and the change applies
+immediately: after writing a new address the sensor stops answering on the old one. They are
+therefore hidden behind an option under **Settings → Devices & services → the entry → Configure**:
+
+1. Turn on **Allow changing the bus settings** and confirm the warning.
+2. Three entities appear: **Bus address**, **Baud rate** and **Parity**.
+3. Writing one of them makes the sensor unreachable from this entry, because the entry keeps the old
+   connection settings. A repair issue says so.
+4. Run **Reconfigure** on the entry and enter the new address, speed and parity to get it back. In the
+   worst case the infrared remote restores the factory settings.
+
+The integration never changes the entry's connection settings on its own: a wrong value would leave
+the entry pointing at nothing, with no way back from inside Home Assistant.
 
 ## How data is updated
 
@@ -96,10 +143,9 @@ register values and firmware versions, with the serial port path redacted.
 
 ## Known limitations
 
-- The sensor's configuration (detection range, delays, sensitivity, light threshold) is **read
-  only**. Writing it from Home Assistant is the next piece of work; until then use the infrared
-  remote the sensor ships with. The integration does not write to the device at all, so nothing here
-  can leave it in a state you cannot undo with the remote.
+- The sensor accepts settings from Home Assistant, but it clamps values it does not like instead of
+  refusing them: a detection range of 0.6 m is stored as 1.0 m, a shielding zone of 0.1 m as 0.3 m.
+  The integration refuses those values so you see what you asked for.
 - Electronics in metal enclosures, elevators and metal-panel rooms break the radar's readings;
   that is a property of the sensor, not of this integration.
 - A reading that the vendor documented ambiguously (two parameter registers) is reported in
