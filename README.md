@@ -129,6 +129,11 @@ register values and firmware versions, with the serial port path redacted.
   updated, so texts added in that update are missing from the cache. Reload the page with
   `Ctrl+Shift+R`, or open Home Assistant in a private window. Restarting Home Assistant does not
   help: the cache lives in the browser.
+- **Distance still shows centimetres after updating to 0.1.7** — Home Assistant keeps the unit a
+  sensor was created with and converts to it, so an existing entity is unaffected by the change.
+  Pick metres in the entity's settings (**Settings → Devices & services → Entities → the sensor →
+  Unit of measurement**), or remove and re-add the device; a new entity starts in metres. A unit
+  you chose yourself is likewise never overridden.
 - **Presence stays on after everyone left** — that is the sensor's departure delay, set on the
   device. Check the device status entity for a health code.
 
