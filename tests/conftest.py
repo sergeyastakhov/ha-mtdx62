@@ -64,7 +64,10 @@ def mock_unit() -> MockModbusUnit:
 
 @pytest.fixture
 def seed_readings(mock_unit: MockModbusUnit) -> MockModbusUnit:
-    """Put a person in the room at 2.5 metres in dim light, sensor self-test passed."""
+    """Put a person in the room at 2.5 metres in dim light, sensor self-test passed.
+
+    The illuminance register carries tenths of a lux, so 42 is 4.2 lx.
+    """
     mock_unit.input[0] = [1, 42, 250, 1, 0x0001, 0x0203, 0x0000, 0x0102]
     return mock_unit
 

@@ -45,13 +45,13 @@ async def test_setup_creates_the_entities(
 
     illuminance = hass.states.get(entity_id(hass, mock_entry, "sensor", "illuminance"))
     assert illuminance is not None
-    assert illuminance.state == "42"
+    assert illuminance.state == "4.2"
 
 
-async def test_distance_is_in_centimetres_and_disabled_by_default(
+async def test_distance_is_disabled_by_default(
     hass: HomeAssistant, mock_entry: MockConfigEntry, patched_unit: MockModbusUnit
 ) -> None:
-    """The library reports metres, the entity reports whole centimetres."""
+    """Distance is off until someone needs it for tuning the detection zone."""
     mock_entry.add_to_hass(hass)
     await hass.config_entries.async_setup(mock_entry.entry_id)
     await hass.async_block_till_done()
@@ -63,6 +63,27 @@ async def test_distance_is_in_centimetres_and_disabled_by_default(
 
     state = hass.states.get(found)
     assert state is None or state.state in (STATE_UNAVAILABLE, "unknown")
+
+
+async def test_distance_shows_metres_with_two_decimals(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, patched_unit: MockModbusUnit
+) -> None:
+    """The value reaches the state machine in metres, with the sensor's resolution."""
+    mock_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(mock_entry.entry_id)
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    found = registry.async_get_entity_id("sensor", DOMAIN, f"{mock_entry.entry_id}_distance")
+    assert found is not None
+    registry.async_update_entity(found, disabled_by=None)
+    await hass.config_entries.async_reload(mock_entry.entry_id)
+    await hass.async_block_till_done()
+
+    state = hass.states.get(found)
+    assert state is not None
+    assert state.state == "2.5"
+    assert state.attributes["unit_of_measurement"] == "m"
 
 
 async def test_three_failed_polls_make_it_unavailable(

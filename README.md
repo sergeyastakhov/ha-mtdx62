@@ -68,8 +68,8 @@ port 502.
 | Entity | Meaning | Notes |
 |---|---|---|
 | Presence | someone is in the room | occupancy class, updated every 5 seconds |
-| Illuminance | ambient light as the sensor sees it | lux |
-| Target distance | distance to the detected target | centimetres, disabled by default |
+| Illuminance | ambient light as the sensor sees it | lux, tenth of a lux |
+| Target distance | distance to the detected target | metres, two decimals, disabled by default |
 | Device status | the sensor's own health code | diagnostic, disabled by default |
 | Application version | firmware of the sensor | diagnostic, disabled by default |
 | Radar version | firmware of the radar module | diagnostic, disabled by default |

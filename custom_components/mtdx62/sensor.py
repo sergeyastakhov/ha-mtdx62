@@ -46,12 +46,9 @@ def _status_key(readings: Readings) -> str | None:
     return STATUS_KEYS[status]
 
 
-def _distance_cm(readings: Readings) -> int | None:
-    """The library reports metres; the entity reports whole centimetres."""
-    distance = readings.distance
-    if distance is None:
-        return None
-    return round(float(distance) * 100)
+def _distance_m(readings: Readings) -> float | None:
+    """The library reports metres with a centimetre resolution; the entity keeps them."""
+    return readings.distance
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -77,10 +74,11 @@ SENSORS: tuple[Mtdx62SensorDescription, ...] = (
         key="distance",
         translation_key="distance",
         device_class=SensorDeviceClass.DISTANCE,
-        native_unit_of_measurement=UnitOfLength.CENTIMETERS,
+        native_unit_of_measurement=UnitOfLength.METERS,
+        suggested_display_precision=2,
         entity_registry_enabled_default=False,
         trust_required=True,
-        value_fn=_distance_cm,
+        value_fn=_distance_m,
     ),
     Mtdx62SensorDescription(
         key="status",

@@ -28,7 +28,7 @@ async def test_diagnostics_report_the_device(
     assert diagnostics["model"] == "MTD062-MB (5.8 GHz)"
     assert diagnostics["unit_id"] == 1
     assert diagnostics["device"]["presence"] is True
-    assert diagnostics["device"]["illuminance"] == 42
+    assert diagnostics["device"]["illuminance"] == 4.2
     assert diagnostics["device"]["app_version"] == "1.2.3"
     assert diagnostics["settings"]["detection_distance"] == 6.0
     assert diagnostics["settings_error"] is None
@@ -74,7 +74,7 @@ async def test_diagnostics_keep_values_while_entities_hide_them(
     diagnostics = await async_get_config_entry_diagnostics(hass, mock_entry)
 
     assert diagnostics["device"]["presence"] is True
-    assert diagnostics["device"]["illuminance"] == 42
+    assert diagnostics["device"]["illuminance"] == 4.2
     assert diagnostics["device"]["status_code"] == 4
     assert diagnostics["device"]["status"] == "RADAR_FAULT"
     assert diagnostics["raw_registers"]["input"][0] == 1

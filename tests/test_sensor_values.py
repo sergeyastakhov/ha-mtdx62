@@ -7,7 +7,7 @@ from unittest.mock import Mock
 import pytest
 from mtdx62_modbus_library import DeviceStatus, Readings
 
-from custom_components.mtdx62.sensor import UNKNOWN_CODE, _distance_cm, _status_key
+from custom_components.mtdx62.sensor import UNKNOWN_CODE, _distance_m, _status_key
 
 
 def test_status_is_none_before_the_first_read() -> None:
@@ -51,12 +51,12 @@ def test_distance_without_a_target_is_none() -> None:
     readings = Mock(spec=Readings)
     readings.distance = None
 
-    assert _distance_cm(readings) is None
+    assert _distance_m(readings) is None
 
 
-def test_distance_is_reported_in_whole_centimetres() -> None:
-    """The library works in metres; users think in centimetres."""
+def test_distance_keeps_the_library_metres() -> None:
+    """No conversion happens here: the value is already metres with a centimetre step."""
     readings = Mock(spec=Readings)
-    readings.distance = 2.507
+    readings.distance = 2.51
 
-    assert _distance_cm(readings) == 251
+    assert _distance_m(readings) == 2.51
