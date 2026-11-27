@@ -190,16 +190,18 @@ class Mtdx62Coordinator(DataUpdateCoordinator[Readings]):
             ) from err
         self.async_update_listeners()
 
-    async def async_write_bus_setting(self, field: str, value: int) -> None:
-        """Write a parameter that moves the sensor to another link.
+    async def async_write_link_settings(self, *, unit_id: int, baudrate: int, parity: int) -> None:
+        """Write the three bus values in one request; the old link dies with it.
 
         There is no confirmation read on purpose: once the sensor accepts the
-        value it answers elsewhere, and the old link is already silent. The entry
+        values it answers elsewhere, and the old link is already silent. The entry
         keeps the old parameters, so the device becomes unreachable until the user
         runs the reconfigure flow; a repair says so.
         """
         try:
-            await self.device.settings.write(field, value)
+            await self.device.settings.async_write_link_settings(
+                unit_id=unit_id, baudrate=baudrate, parity=parity
+            )
         except ValueError as err:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
@@ -211,10 +213,12 @@ class Mtdx62Coordinator(DataUpdateCoordinator[Readings]):
                 translation_domain=DOMAIN, translation_key="no_answer"
             ) from err
         _LOGGER.warning(
-            "%s: %s is now %s on the sensor; this entry still uses the old link",
+            "%s: the sensor now answers on address %s, %s baud, parity %s;"
+            " this entry still uses the old link",
             self.name,
-            field,
-            value,
+            unit_id,
+            baudrate,
+            parity,
         )
         ir.async_create_issue(
             self.hass,
@@ -226,8 +230,9 @@ class Mtdx62Coordinator(DataUpdateCoordinator[Readings]):
             translation_key=ISSUE_BUS_SETTINGS_CHANGED,
             translation_placeholders={
                 "name": self.config_entry.title,
-                "setting": field,
-                "value": str(value),
+                "address": str(unit_id),
+                "baudrate": str(baudrate),
+                "parity": str(parity),
             },
         )
         self._bus_issue_raised = True

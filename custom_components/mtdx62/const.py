@@ -14,7 +14,6 @@ CONF_MODEL: Final = "model"
 CONF_BAUDRATE: Final = "baudrate"
 CONF_PARITY: Final = "parity"
 CONF_STOPBITS: Final = "stopbits"
-CONF_ALLOW_BUS_SETTINGS: Final = "allow_bus_settings"
 CONF_CONFIRM: Final = "confirm"
 
 TYPE_TCP: Final = "tcp"
@@ -93,4 +92,5 @@ SETTINGS_DIAGNOSTIC_FIELDS: Final = (
     "active_report",
     "light_threshold",
     "report_interval",
+    "mac_code",
 )

@@ -33,7 +33,10 @@ from mtdx62_modbus_library import Mtdx62Device
 from probatio import Schema
 
 from .const import (
-    CONF_ALLOW_BUS_SETTINGS,
+    BAUDRATE_OPTIONS,
+    BUS_PARITY_CODE_BY_OPTION,
+    BUS_PARITY_OPTION_BY_CODE,
+    BUS_PARITY_OPTIONS,
     CONF_BAUDRATE,
     CONF_CONFIRM,
     CONF_MODEL,
@@ -123,7 +126,13 @@ STEP_SERIAL_SCHEMA = probatio.Schema(
 SCHEMAS = {TYPE_TCP: STEP_TCP_SCHEMA, TYPE_SERIAL: STEP_SERIAL_SCHEMA}
 
 BUS_SETTINGS_SCHEMA = probatio.Schema(
-    {probatio.Required(CONF_ALLOW_BUS_SETTINGS, default=False): BooleanSelector()}
+    {
+        probatio.Required(CONF_UNIT_ID, default=DEFAULT_UNIT_ID): _number(1, 247),
+        probatio.Required(CONF_BAUDRATE, default=str(DEFAULT_BAUDRATE)): _select(
+            list(BAUDRATE_OPTIONS)
+        ),
+        probatio.Required(CONF_PARITY, default="none"): _select(list(BUS_PARITY_OPTIONS)),
+    }
 )
 
 CONFIRM_SCHEMA = probatio.Schema(
@@ -272,22 +281,43 @@ class Mtdx62ConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class Mtdx62OptionsFlow(OptionsFlow):
-    """Let the user decide whether the sensor's bus settings may be changed here."""
+    """Change the sensor's bus settings, where a warning can be shown."""
+
+    def __init__(self) -> None:
+        """Start with nothing to write."""
+        super().__init__()
+        self._new_values: dict[str, int] = {}
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Ask whether the bus settings should be editable."""
+        """Ask for the three values that decide how the sensor answers."""
+        entry: ConfigEntry = self.config_entry
+        settings = entry.runtime_data.device.settings
+        current_parity = (
+            None if settings.parity is None else BUS_PARITY_OPTION_BY_CODE.get(settings.parity)
+        )
         if user_input is not None:
-            if user_input[CONF_ALLOW_BUS_SETTINGS]:
-                return await self.async_step_bus_settings_confirm()
-            return self.async_create_entry(data={CONF_ALLOW_BUS_SETTINGS: False})
+            new_values = {
+                CONF_UNIT_ID: int(user_input[CONF_UNIT_ID]),
+                CONF_BAUDRATE: int(user_input[CONF_BAUDRATE]),
+                CONF_PARITY: BUS_PARITY_CODE_BY_OPTION[user_input[CONF_PARITY]],
+            }
+            unchanged = (
+                new_values[CONF_UNIT_ID] == settings.unit_id
+                and new_values[CONF_BAUDRATE] == settings.baudrate
+                and new_values[CONF_PARITY] == settings.parity
+            )
+            if unchanged:
+                return self.async_create_entry(data={})
+            self._new_values = new_values
+            return await self.async_step_bus_settings_confirm()
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(
                 BUS_SETTINGS_SCHEMA,
                 {
-                    CONF_ALLOW_BUS_SETTINGS: self.config_entry.options.get(
-                        CONF_ALLOW_BUS_SETTINGS, False
-                    )
+                    CONF_UNIT_ID: settings.unit_id or DEFAULT_UNIT_ID,
+                    CONF_BAUDRATE: str(settings.baudrate or DEFAULT_BAUDRATE),
+                    CONF_PARITY: current_parity or "none",
                 },
             ),
         )
@@ -295,9 +325,18 @@ class Mtdx62OptionsFlow(OptionsFlow):
     async def async_step_bus_settings_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """A switch is not enough for an action that makes the sensor unreachable."""
+        """A form is not enough for an action that makes the sensor unreachable."""
         if user_input is not None:
-            return self.async_create_entry(
-                data={CONF_ALLOW_BUS_SETTINGS: bool(user_input.get(CONF_CONFIRM))}
-            )
+            if not user_input.get(CONF_CONFIRM):
+                return self.async_create_entry(data={})
+            coordinator = self.config_entry.runtime_data
+            try:
+                await coordinator.async_write_link_settings(**self._new_values)
+            except HomeAssistantError:
+                return self.async_show_form(
+                    step_id="bus_settings_confirm",
+                    data_schema=CONFIRM_SCHEMA,
+                    errors={"base": "cannot_write"},
+                )
+            return self.async_create_entry(data={})
         return self.async_show_form(step_id="bus_settings_confirm", data_schema=CONFIRM_SCHEMA)

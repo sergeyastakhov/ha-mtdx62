@@ -6,7 +6,7 @@ pymodbus==3.13.1
 modbus-connection[tmodbus]==4.12.8
 tmodbus==1.1.0
 
-mtdx62-modbus-library==0.4.2
+mtdx62-modbus-library==0.5.0
 pytest-homeassistant-custom-component==0.13.375
 pytest-cov>=6.0
 ruff>=0.9

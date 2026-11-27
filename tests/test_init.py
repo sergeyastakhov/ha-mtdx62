@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_ON, STATE_UNAVAILABLE
@@ -195,3 +197,21 @@ async def test_measurements_return_once_the_self_test_passes(
     await hass.async_block_till_done()
 
     assert hass.states.get(presence_id).state == STATE_ON
+
+
+async def test_a_failed_unload_keeps_the_entry(
+    hass: HomeAssistant, mock_entry: MockConfigEntry
+) -> None:
+    """When a platform refuses to unload, the entry stays loaded."""
+    mock_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(mock_entry.entry_id)
+    await hass.async_block_till_done()
+
+    with patch.object(
+        hass.config_entries,
+        "async_unload_platforms",
+        AsyncMock(return_value=False),
+    ):
+        assert not await hass.config_entries.async_unload(mock_entry.entry_id)
+
+    assert mock_entry.state is ConfigEntryState.FAILED_UNLOAD

@@ -84,6 +84,24 @@
         "mtd062-mb": "MTD062-MB (5.8 GHz)",
         "mtd262-mb": "MTD262-MB (24 GHz)"
       }
+    },
+    "baudrate": {
+      "options": {
+        "1200": "1200",
+        "2400": "2400",
+        "4800": "4800",
+        "9600": "9600",
+        "19200": "19200",
+        "38400": "38400",
+        "57600": "57600"
+      }
+    },
+    "parity": {
+      "options": {
+        "none": "None",
+        "odd": "Odd",
+        "even": "Even"
+      }
     }
   },
   "entity": {
@@ -117,6 +135,9 @@
       },
       "radar_version": {
         "name": "Radar version"
+      },
+      "mac_code": {
+        "name": "MAC code"
       }
     },
     "number": {
@@ -147,19 +168,6 @@
       "unit_id": {
         "name": "Bus address"
       }
-    },
-    "select": {
-      "baudrate": {
-        "name": "Baud rate"
-      },
-      "parity": {
-        "name": "Parity",
-        "state": {
-          "none": "None",
-          "odd": "Odd",
-          "even": "Even"
-        }
-      }
     }
   },
   "issues": {
@@ -169,7 +177,7 @@
     },
     "bus_settings_changed": {
       "title": "Bus settings of {name} were changed",
-      "description": "The sensor reports {setting} = {value} now, and this entry still uses the old connection settings, so it cannot be reached. Run **Reconfigure** on the entry and enter the new address, speed and parity."
+      "description": "The sensor now answers on address {address}, {baudrate} baud, parity {parity}. This entry still uses the old connection settings, so it cannot be reached. Run **Reconfigure** and enter the new values."
     }
   },
   "exceptions": {
@@ -194,21 +202,25 @@
   },
   "options": {
     "step": {
-      "bus_settings_confirm": {
-        "title": "Confirm",
-        "description": "The sensor will stop answering on the current settings as soon as one of the bus values is written. You will have to reconfigure the entry to reach it again.",
-        "data": {
-          "confirm": "I understand the sensor will be unreachable"
-        }
-      },
       "init": {
         "title": "Bus settings",
-        "description": "Changing the bus address, speed or parity breaks the link: the sensor starts answering on the new settings while this entry keeps the old ones, so its entities become unavailable. To get it back, run **Reconfigure** on the entry and enter the new connection settings.",
+        "description": "Changing the address, speed or parity breaks the link: the sensor starts answering on the new values while this entry keeps the old ones, so its entities become unavailable. To get it back, run **Reconfigure** and enter the new connection settings.",
         "data": {
-          "allow_bus_settings": "Allow changing the bus settings"
+          "unit_id": "Bus address",
+          "baudrate": "Baud rate",
+          "parity": "Parity"
         },
         "data_description": {
-          "allow_bus_settings": "Turn this on to get number and select entities for the address, speed and parity."
+          "unit_id": "Address of this sensor on the bus, 1 to 247.",
+          "baudrate": "Standard Modbus speeds only.",
+          "parity": "Must match the new setting on the sensor."
+        }
+      },
+      "bus_settings_confirm": {
+        "title": "Confirm",
+        "description": "The sensor stops answering on the current settings as soon as these values are written. You will have to reconfigure the entry to reach it again.",
+        "data": {
+          "confirm": "I understand the sensor will be unreachable"
         }
       }
     }

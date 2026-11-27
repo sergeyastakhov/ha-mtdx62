@@ -64,6 +64,9 @@ rules:
   entity-category:
     status: done
     comment: Settings carry the config category; versions, status and the repair are diagnostic.
+  entity-disabled-by-default:
+    status: done
+    comment: Settings are registered disabled, so nothing can be changed by accident; the MAC code is diagnostic and disabled too.
   entity-device-class:
     status: done
     comment: Distance, duration and illuminance numbers use the matching device classes.

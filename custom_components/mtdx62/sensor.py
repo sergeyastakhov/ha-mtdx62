@@ -23,6 +23,13 @@ from .entity import Mtdx62Entity
 
 PARALLEL_UPDATES = 0
 
+MAC_SENSOR = SensorEntityDescription(
+    key="mac_code",
+    translation_key="mac_code",
+    entity_category=EntityCategory.DIAGNOSTIC,
+    entity_registry_enabled_default=False,
+)
+
 STATUS_KEYS: dict[DeviceStatus, str] = {
     DeviceStatus.SELF_CHECK_IN_PROGRESS: "self_check_in_progress",
     DeviceStatus.OK: "ok",
@@ -112,7 +119,33 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Add the sensors of this entry."""
-    async_add_entities(Mtdx62Sensor(entry.runtime_data, description) for description in SENSORS)
+    coordinator = entry.runtime_data
+    entities: list[SensorEntity] = [
+        Mtdx62Sensor(coordinator, description) for description in SENSORS
+    ]
+    entities.append(Mtdx62SettingSensor(coordinator, MAC_SENSOR))
+    async_add_entities(entities)
+
+
+class Mtdx62SettingSensor(Mtdx62Entity, SensorEntity):
+    """A value that lives in the settings block, read for diagnostics."""
+
+    entity_description: SensorEntityDescription
+
+    def __init__(
+        self,
+        coordinator: Mtdx62Coordinator,
+        description: SensorEntityDescription,
+    ) -> None:
+        """Create the sensor from its description."""
+        super().__init__(coordinator, description.key)
+        self.entity_description = description
+
+    @property
+    def native_value(self) -> StateType:
+        """Read the value out of the library's settings component."""
+        value = getattr(self.coordinator.device.settings, self.entity_description.key)
+        return None if value is None else int(value)
 
 
 class Mtdx62Sensor(Mtdx62Entity, SensorEntity):

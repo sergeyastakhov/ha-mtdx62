@@ -17,7 +17,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from mtdx62_modbus_library import SettingSpec
 
 from . import Mtdx62ConfigEntry
-from .const import CONF_ALLOW_BUS_SETTINGS
 from .coordinator import Mtdx62Coordinator
 from .entity import Mtdx62Entity
 
@@ -83,12 +82,6 @@ NUMBERS: Final[tuple[Mtdx62NumberDescription, ...]] = (
         field="light_threshold",
         device_class=NumberDeviceClass.ILLUMINANCE,
     ),
-    Mtdx62NumberDescription(
-        key="unit_id",
-        translation_key="unit_id",
-        field="unit_id",
-        bus=True,
-    ),
 )
 
 
@@ -97,16 +90,14 @@ async def async_setup_entry(
     entry: Mtdx62ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Add the parameters, and the bus address when the user allowed it."""
+    """Add the parameters; they stay out of the way until enabled."""
     coordinator = entry.runtime_data
-    allow_bus = entry.options.get(CONF_ALLOW_BUS_SETTINGS, False)
     known = {spec.name for spec in coordinator.device.settings.writable_fields()}
-    entities = [
+    async_add_entities(
         Mtdx62Number(coordinator, description)
         for description in NUMBERS
-        if description.field in known and (allow_bus or not description.bus)
-    ]
-    async_add_entities(entities)
+        if description.field in known
+    )
 
 
 class Mtdx62Number(Mtdx62Entity, NumberEntity):
@@ -114,6 +105,7 @@ class Mtdx62Number(Mtdx62Entity, NumberEntity):
 
     entity_description: Mtdx62NumberDescription
     _attr_entity_category = EntityCategory.CONFIG
+    _attr_entity_registry_enabled_default = False
     _attr_mode = NumberMode.BOX
 
     def __init__(
@@ -146,9 +138,4 @@ class Mtdx62Number(Mtdx62Entity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         """Write the value and let the coordinator explain a refusal."""
-        if self.entity_description.bus:
-            await self.coordinator.async_write_bus_setting(
-                self.entity_description.field, int(value)
-            )
-            return
         await self.coordinator.async_write_setting(self.entity_description.field, value)

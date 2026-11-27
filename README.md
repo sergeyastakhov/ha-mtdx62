@@ -84,7 +84,13 @@ of the sensor itself decide how quickly presence clears.
 
 ## Settings
 
-The sensor's parameters are adjustable from Home Assistant:
+The sensor's parameters are adjustable from Home Assistant, but they are **registered disabled**:
+nothing in the device page can be changed until you decide to. To edit one:
+
+1. Open the device, select **the entity you need** in the entity list (or find it under
+   **Settings → Devices & services → Entities**).
+2. Open its settings and turn it on (the switch next to **Enabled**).
+3. The entity appears in the device page as a number and writes take effect immediately.
 
 | Setting | Unit | Range |
 |---|---|---|
@@ -112,21 +118,32 @@ the room is darker than the threshold). That behaviour was not confirmed on a re
 depends on a person being in the room — so treat the threshold as a stored parameter, not as a
 verified gate.
 
-### Bus settings, off by default
+> **Tip for dashboards.** If you enabled a setting and want to show it read-only on a dashboard, give
+> the row `type: simple-entity` and turn off `tap_action` and `hold_action` in the entities card. That
+> renders the value without a control; it does not stop other places from writing to it.
 
-The bus address, speed and parity change **how the sensor answers**, and the change applies
-immediately: after writing a new address the sensor stops answering on the old one. They are
-therefore hidden behind an option under **Settings → Devices & services → the entry → Configure**:
+### Bus settings, in the entry's dialog
 
-1. Turn on **Allow changing the bus settings** and confirm the warning.
-2. Three entities appear: **Bus address**, **Baud rate** and **Parity**.
-3. Writing one of them makes the sensor unreachable from this entry, because the entry keeps the old
-   connection settings. A repair issue says so.
-4. Run **Reconfigure** on the entry and enter the new address, speed and parity to get it back. In the
+The bus address, speed and parity decide **how the sensor answers**, and a new value applies
+immediately: after writing a new address the sensor stops answering on the old one. They are not
+entities at all and live in the entry's dialog instead:
+
+1. **Settings → Devices & services → the sensor → Configure**.
+2. The form shows the three current values and a warning that the link will break.
+3. Confirm on the next step; the three values go to the sensor in **one** request.
+4. The sensor becomes unreachable from this entry, because the entry keeps the old connection
+   settings. A repair says so.
+5. Run **Reconfigure** on the entry and enter the new address, speed and parity to get it back. In the
    worst case the infrared remote restores the factory settings.
 
 The integration never changes the entry's connection settings on its own: a wrong value would leave
 the entry pointing at nothing, with no way back from inside Home Assistant.
+
+## Diagnostic values
+
+The **MAC code** sensor reads register `0x000D`. It is one register, not a full MAC address — on the
+tested unit it reads `1` — so it is diagnostic, disabled by default and never written. It also appears
+in the diagnostics download.
 
 ## How data is updated
 
@@ -205,8 +222,8 @@ The rules this integration follows are shared with every other device integratio
 - [`conventions/config-flow-errors`](https://github.com/sergeyastakhov/ha-integration-workspace/blob/main/openspec/specs/conventions/config-flow-errors/spec.md)
   — one cause per message, and the form keeps what you typed.
 - [`conventions/live-verification`](https://github.com/sergeyastakhov/ha-integration-workspace/blob/main/openspec/specs/conventions/live-verification/spec.md)
-  — a release is checked on a running Home Assistant with the real device, and the result is written
-  down in [`docs/live-check.md`](docs/live-check.md).
+  — a release is checked on a running Home Assistant with the real device, following the checklist
+  in [`docs/live-check.md`](docs/live-check.md); the result goes into the release notes.
 
 They are not repeated here on purpose. A rule that holds for every integration changes in that
 repository, not in this one, so this README only describes what is specific to the MTDx62.

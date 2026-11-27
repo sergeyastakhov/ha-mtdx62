@@ -1,4 +1,4 @@
-"""The settings entities: what exists, its limits, and how writes land."""
+"""The settings entities: hidden by default, writable once enabled."""
 
 from __future__ import annotations
 
@@ -13,11 +13,7 @@ from modbus_connection import IllegalDataValueError, ModbusTimeoutError
 from modbus_connection.mock import MockModbusUnit, WriteEvent
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.mtdx62.const import (
-    CONF_ALLOW_BUS_SETTINGS,
-    DOMAIN,
-    ISSUE_BUS_SETTINGS_CHANGED,
-)
+from custom_components.mtdx62.const import DOMAIN, ISSUE_BUS_SETTINGS_CHANGED
 
 SETTINGS = (
     "detection_distance",
@@ -36,17 +32,6 @@ def entity_id(hass: HomeAssistant, entry: MockConfigEntry, domain: str, key: str
     return er.async_get(hass).async_get_entity_id(domain, DOMAIN, f"{entry.entry_id}_{key}")
 
 
-def entry_with(entry_data: dict[str, object], **options: object) -> MockConfigEntry:
-    """A config entry with the given options, which cannot be set afterwards."""
-    return MockConfigEntry(
-        domain=DOMAIN,
-        title="MTD062-MB (5.8 GHz)",
-        data=entry_data,
-        options=dict(options),
-        unique_id="tcp:192.168.1.50:502#1",
-    )
-
-
 def recorder(unit: MockModbusUnit) -> list[WriteEvent]:
     """Every write the integration sent."""
     seen: list[WriteEvent] = []
@@ -61,41 +46,46 @@ async def setup(hass: HomeAssistant, entry: MockConfigEntry) -> None:
     await hass.async_block_till_done()
 
 
-async def test_eight_settings_and_no_bus_entities(
+async def enable(hass: HomeAssistant, entry: MockConfigEntry, domain: str, key: str) -> str:
+    """Turn on an entity that ships disabled and return its id."""
+    found = entity_id(hass, entry, domain, key)
+    assert found is not None
+    er.async_get(hass).async_update_entity(found, disabled_by=None)
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    return found
+
+
+async def test_settings_are_hidden_by_default(
     hass: HomeAssistant, mock_entry: MockConfigEntry
 ) -> None:
-    """By default the user gets the ordinary parameters, nothing that can cut the link."""
+    """Eight numbers are registered, all disabled, so the block stays quiet."""
     await setup(hass, mock_entry)
 
     for field in SETTINGS:
-        assert entity_id(hass, mock_entry, "number", field) is not None, field
+        found = entity_id(hass, mock_entry, "number", field)
+        assert found is not None, field
+        entry = er.async_get(hass).async_get(found)
+        assert entry is not None
+        assert entry.disabled_by is not None, field
+        assert hass.states.get(found) is None, field
+
+
+async def test_no_bus_entities(hass: HomeAssistant, mock_entry: MockConfigEntry) -> None:
+    """The bus address, speed and parity are not entities at all."""
+    await setup(hass, mock_entry)
+
     for field in ("unit_id", "baudrate", "parity"):
         assert entity_id(hass, mock_entry, "number", field) is None, field
         assert entity_id(hass, mock_entry, "select", field) is None, field
 
 
-async def test_limits_come_from_the_library(
-    hass: HomeAssistant, mock_entry: MockConfigEntry
-) -> None:
-    """The entity shows the library's range, not a copy of it."""
-    await setup(hass, mock_entry)
-    found = entity_id(hass, mock_entry, "number", "detection_distance")
-    assert found is not None
-    state = hass.states.get(found)
-    assert state is not None
-    assert float(state.attributes["min"]) == 1.0
-    assert float(state.attributes["max"]) == 10.0
-    assert float(state.attributes["step"]) == 0.01
-    assert state.attributes["unit_of_measurement"] == "m"
-
-
-async def test_a_setting_is_written_and_confirmed(
+async def test_an_enabled_setting_can_be_written(
     hass: HomeAssistant, mock_entry: MockConfigEntry, patched_unit: MockModbusUnit
 ) -> None:
-    """Setting a number reaches the register and the entity shows the stored value."""
+    """Enabling the entity is the permission to change the value."""
     await setup(hass, mock_entry)
-    found = entity_id(hass, mock_entry, "number", "detection_distance")
-    assert found is not None
+    found = await enable(hass, mock_entry, "number", "detection_distance")
 
     await hass.services.async_call(
         "number", "set_value", {"entity_id": found, "value": 4.5}, blocking=True
@@ -108,15 +98,28 @@ async def test_a_setting_is_written_and_confirmed(
     assert float(state.state) == 4.5
 
 
+async def test_limits_come_from_the_library(
+    hass: HomeAssistant, mock_entry: MockConfigEntry
+) -> None:
+    """The entity shows the library's range, not a copy of it."""
+    await setup(hass, mock_entry)
+    found = await enable(hass, mock_entry, "number", "detection_distance")
+    state = hass.states.get(found)
+    assert state is not None
+    assert float(state.attributes["min"]) == 1.0
+    assert float(state.attributes["max"]) == 10.0
+    assert float(state.attributes["step"]) == 0.01
+    assert state.attributes["unit_of_measurement"] == "m"
+
+
 async def test_a_booting_sensor_is_not_written(
     hass: HomeAssistant, mock_entry: MockConfigEntry, patched_unit: MockModbusUnit
 ) -> None:
     """While the sensor reports its self-check, settings are refused."""
     patched_unit.input[0] = [0, 0, 0, 0, 0x0001, 0x0103, 0, 0]
     await setup(hass, mock_entry)
+    found = await enable(hass, mock_entry, "number", "detection_distance")
     seen = recorder(patched_unit)
-    found = entity_id(hass, mock_entry, "number", "detection_distance")
-    assert found is not None
 
     with pytest.raises(HomeAssistantError) as caught:
         await hass.services.async_call(
@@ -135,8 +138,7 @@ async def test_zones_must_fit_into_the_range(
     patched_unit.holding[1] = 300
     patched_unit.holding[6] = 60
     await setup(hass, mock_entry)
-    found = entity_id(hass, mock_entry, "number", "entry_indent")
-    assert found is not None
+    found = await enable(hass, mock_entry, "number", "entry_indent")
 
     with pytest.raises(HomeAssistantError) as caught:
         await hass.services.async_call(
@@ -153,8 +155,7 @@ async def test_a_clamped_value_is_reported(
     """If the sensor keeps another number, the user hears about it."""
     patched_unit.on_write(lambda event: patched_unit.holding.__setitem__(event.address, 7))
     await setup(hass, mock_entry)
-    found = entity_id(hass, mock_entry, "number", "trigger_sensitivity")
-    assert found is not None
+    found = await enable(hass, mock_entry, "number", "trigger_sensitivity")
 
     with pytest.raises(HomeAssistantError) as caught:
         await hass.services.async_call(
@@ -164,66 +165,13 @@ async def test_a_clamped_value_is_reported(
     assert caught.value.translation_key == "value_not_stored"
 
 
-async def test_bus_entities_appear_only_with_the_option(
-    hass: HomeAssistant, entry_data: dict[str, object]
-) -> None:
-    """The address, speed and parity are behind the switch the user turns on."""
-    mock_entry = entry_with(entry_data, **{CONF_ALLOW_BUS_SETTINGS: True})
-    await setup(hass, mock_entry)
-
-    assert entity_id(hass, mock_entry, "number", "unit_id") is not None
-    baudrate = entity_id(hass, mock_entry, "select", "baudrate")
-    assert baudrate is not None
-    state = hass.states.get(baudrate)
-    assert state is not None
-    assert state.state == "9600"
-
-
-async def test_writing_the_address_creates_a_repair(
-    hass: HomeAssistant, entry_data: dict[str, object], patched_unit: MockModbusUnit
-) -> None:
-    """The value lands in the sensor, the entry keeps its link, a repair says so."""
-    mock_entry = entry_with(entry_data, **{CONF_ALLOW_BUS_SETTINGS: True})
-    await setup(hass, mock_entry)
-    found = entity_id(hass, mock_entry, "number", "unit_id")
-    assert found is not None
-
-    await hass.services.async_call(
-        "number", "set_value", {"entity_id": found, "value": 5}, blocking=True
-    )
-    await hass.async_block_till_done()
-
-    assert patched_unit.holding[7] == 5
-    assert mock_entry.data["unit_id"] == 1
-    issue = ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_BUS_SETTINGS_CHANGED)
-    assert issue is not None
-
-
-async def test_the_parity_select_maps_to_the_register(
-    hass: HomeAssistant, entry_data: dict[str, object], patched_unit: MockModbusUnit
-) -> None:
-    """The option names are translated; the register gets the code."""
-    mock_entry = entry_with(entry_data, **{CONF_ALLOW_BUS_SETTINGS: True})
-    await setup(hass, mock_entry)
-    found = entity_id(hass, mock_entry, "select", "parity")
-    assert found is not None
-
-    await hass.services.async_call(
-        "select", "select_option", {"entity_id": found, "option": "even"}, blocking=True
-    )
-    await hass.async_block_till_done()
-
-    assert patched_unit.holding[9] == 2
-
-
 async def test_a_rejected_value_is_reported(
     hass: HomeAssistant, mock_entry: MockConfigEntry, patched_unit: MockModbusUnit
 ) -> None:
     """An exception from the sensor is not the same as a value that did not stick."""
     patched_unit.fail_write(4, IllegalDataValueError("no such value"))
     await setup(hass, mock_entry)
-    found = entity_id(hass, mock_entry, "number", "trigger_sensitivity")
-    assert found is not None
+    found = await enable(hass, mock_entry, "number", "trigger_sensitivity")
 
     with pytest.raises(HomeAssistantError) as caught:
         await hass.services.async_call(
@@ -239,8 +187,7 @@ async def test_a_silent_sensor_is_reported(
     """A timeout reads as "no answer", not as a refused value."""
     patched_unit.fail_write(4, ModbusTimeoutError("no answer"))
     await setup(hass, mock_entry)
-    found = entity_id(hass, mock_entry, "number", "trigger_sensitivity")
-    assert found is not None
+    found = await enable(hass, mock_entry, "number", "trigger_sensitivity")
 
     with pytest.raises(HomeAssistantError) as caught:
         await hass.services.async_call(
@@ -250,47 +197,45 @@ async def test_a_silent_sensor_is_reported(
     assert caught.value.translation_key == "no_answer"
 
 
-async def test_a_bus_value_out_of_range_is_refused(
-    hass: HomeAssistant, entry_data: dict[str, object], patched_unit: MockModbusUnit
+async def test_the_mac_sensor_is_diagnostic_and_disabled(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, patched_unit: MockModbusUnit
 ) -> None:
-    """The library's range check is translated into a form error."""
-    entry = entry_with(entry_data, **{CONF_ALLOW_BUS_SETTINGS: True})
-    await setup(hass, entry)
-    coordinator = entry.runtime_data
+    """The MAC code is there for a bug report, not for the everyday view."""
+    patched_unit.holding[13] = 1
+    await setup(hass, mock_entry)
+    found = entity_id(hass, mock_entry, "sensor", "mac_code")
+    assert found is not None
+    entry = er.async_get(hass).async_get(found)
+    assert entry is not None
+    assert entry.disabled_by is not None
+    assert entry.entity_category == "diagnostic"
 
-    with pytest.raises(HomeAssistantError) as caught:
-        await coordinator.async_write_bus_setting("unit_id", 999)
+    found = await enable(hass, mock_entry, "sensor", "mac_code")
+    state = hass.states.get(found)
+    assert state is not None
+    assert state.state == "1"
 
-    assert caught.value.translation_key == "value_out_of_range"
 
-
-async def test_a_bus_write_without_an_answer_is_reported(
-    hass: HomeAssistant, entry_data: dict[str, object], patched_unit: MockModbusUnit
+async def test_the_zone_check_waits_for_real_values(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, patched_unit: MockModbusUnit
 ) -> None:
-    """A silent sensor on a bus write gets its own message."""
-    entry = entry_with(entry_data, **{CONF_ALLOW_BUS_SETTINGS: True})
-    await setup(hass, entry)
-    patched_unit.fail_write(7, ModbusTimeoutError("no answer"))
+    """Before the first settings read the rule is meaningless, not violated."""
+    await setup(hass, mock_entry)
+    coordinator = mock_entry.runtime_data
 
-    with pytest.raises(HomeAssistantError) as caught:
-        await entry.runtime_data.async_write_bus_setting("unit_id", 5)
+    with patch.object(
+        type(coordinator.device.settings),
+        "detection_distance",
+        property(lambda self: None),
+    ):
+        coordinator._require_zones_fit("entry_indent", 1.5)
 
-    assert caught.value.translation_key == "no_answer"
-
-
-async def test_the_repair_goes_away_when_the_sensor_answers(
-    hass: HomeAssistant, entry_data: dict[str, object], patched_unit: MockModbusUnit
-) -> None:
-    """After the user reconfigured the entry, a poll clears the stale repair."""
-    entry = entry_with(entry_data, **{CONF_ALLOW_BUS_SETTINGS: True})
-    await setup(hass, entry)
-    await entry.runtime_data.async_write_bus_setting("unit_id", 5)
-    assert ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_BUS_SETTINGS_CHANGED) is not None
-
-    await entry.runtime_data.async_refresh()
-    await hass.async_block_till_done()
-
-    assert ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_BUS_SETTINGS_CHANGED) is None
+    with patch.object(
+        type(coordinator.device.settings),
+        "detection_distance",
+        property(lambda self: 0.0),
+    ):
+        coordinator._require_zones_fit("entry_indent", 1.5)
 
 
 async def test_a_failed_settings_read_keeps_the_poll(
@@ -319,6 +264,25 @@ async def test_a_fault_clearing_is_logged(
     assert mock_entry.runtime_data._reported_fault is None
 
 
+async def test_the_bus_write_creates_a_repair(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, patched_unit: MockModbusUnit
+) -> None:
+    """The dialog path: one batch write, a repair, and the entry left alone."""
+    await setup(hass, mock_entry)
+    coordinator = mock_entry.runtime_data
+    seen: list[WriteEvent] = []
+    patched_unit.on_write(seen.append)
+
+    await coordinator.async_write_link_settings(unit_id=5, baudrate=19200, parity=2)
+    await hass.async_block_till_done()
+
+    assert len(seen) == 1
+    assert seen[0].function_code == 0x10
+    assert seen[0].values == [5, 19200, 2]
+    assert mock_entry.data["unit_id"] == 1
+    assert ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_BUS_SETTINGS_CHANGED) is not None
+
+
 async def test_the_coordinator_refuses_a_value_the_library_rejects(
     hass: HomeAssistant, mock_entry: MockConfigEntry, patched_unit: MockModbusUnit
 ) -> None:
@@ -332,23 +296,45 @@ async def test_the_coordinator_refuses_a_value_the_library_rejects(
     assert caught.value.translation_key == "value_out_of_range"
 
 
-async def test_the_zone_check_waits_for_real_values(
+async def test_a_bus_value_out_of_range_never_reaches_the_bus(
     hass: HomeAssistant, mock_entry: MockConfigEntry, patched_unit: MockModbusUnit
 ) -> None:
-    """Before the first settings read the rule is meaningless, not violated."""
+    """The batch is validated before the request."""
     await setup(hass, mock_entry)
-    coordinator = mock_entry.runtime_data
+    seen: list[WriteEvent] = []
+    patched_unit.on_write(seen.append)
 
-    with patch.object(
-        type(coordinator.device.settings),
-        "detection_distance",
-        property(lambda self: None),
-    ):
-        coordinator._require_zones_fit("entry_indent", 1.5)
+    with pytest.raises(HomeAssistantError) as caught:
+        await mock_entry.runtime_data.async_write_link_settings(
+            unit_id=999, baudrate=9600, parity=0
+        )
 
-    with patch.object(
-        type(coordinator.device.settings),
-        "detection_distance",
-        property(lambda self: 0.0),
-    ):
-        coordinator._require_zones_fit("entry_indent", 1.5)
+    assert caught.value.translation_key == "value_out_of_range"
+    assert seen == []
+
+
+async def test_a_silent_sensor_during_the_bus_write_is_reported(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, patched_unit: MockModbusUnit
+) -> None:
+    """A timeout on the batch write is "no answer", not a refused value."""
+    await setup(hass, mock_entry)
+    patched_unit.fail_write(7, ModbusTimeoutError("no answer"))
+
+    with pytest.raises(HomeAssistantError) as caught:
+        await mock_entry.runtime_data.async_write_link_settings(unit_id=5, baudrate=19200, parity=2)
+
+    assert caught.value.translation_key == "no_answer"
+
+
+async def test_the_repair_goes_away_when_the_sensor_answers(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, patched_unit: MockModbusUnit
+) -> None:
+    """After the user reconfigured the entry, a poll clears the stale repair."""
+    await setup(hass, mock_entry)
+    await mock_entry.runtime_data.async_write_link_settings(unit_id=5, baudrate=19200, parity=2)
+    assert ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_BUS_SETTINGS_CHANGED) is not None
+
+    await mock_entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+
+    assert ir.async_get(hass).async_get_issue(DOMAIN, ISSUE_BUS_SETTINGS_CHANGED) is None
