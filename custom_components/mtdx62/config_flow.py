@@ -131,7 +131,7 @@ BUS_SETTINGS_SCHEMA = probatio.Schema(
         probatio.Required(CONF_BAUDRATE, default=str(DEFAULT_BAUDRATE)): _select(
             list(BAUDRATE_OPTIONS)
         ),
-        probatio.Required(CONF_PARITY, default="none"): _select(list(BUS_PARITY_OPTIONS)),
+        probatio.Required(CONF_PARITY, default="N"): _select(list(BUS_PARITY_OPTIONS)),
     }
 )
 
@@ -317,7 +317,7 @@ class Mtdx62OptionsFlow(OptionsFlow):
                 {
                     CONF_UNIT_ID: settings.unit_id or DEFAULT_UNIT_ID,
                     CONF_BAUDRATE: str(settings.baudrate or DEFAULT_BAUDRATE),
-                    CONF_PARITY: current_parity or "none",
+                    CONF_PARITY: current_parity or "N",
                 },
             ),
         )

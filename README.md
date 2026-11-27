@@ -130,11 +130,15 @@ entities at all and live in the entry's dialog instead:
 
 1. **Settings → Devices & services → the sensor → Configure**.
 2. The form shows the three current values and a warning that the link will break.
-3. Confirm on the next step; the three values go to the sensor in **one** request.
+3. Confirm on the next step; the three values go to the sensor in **one** request. Parity is
+   offered as `N`, `E` or `O` — the same letters the setup form uses.
 4. The sensor becomes unreachable from this entry, because the entry keeps the old connection
    settings. A repair says so.
 5. Run **Reconfigure** on the entry and enter the new address, speed and parity to get it back. In the
    worst case the infrared remote restores the factory settings.
+
+Parity is written the Modbus way everywhere — in the setup form, in this dialog and in the repair
+message: `N` no parity, `E` even, `O` odd.
 
 The integration never changes the entry's connection settings on its own: a wrong value would leave
 the entry pointing at nothing, with no way back from inside Home Assistant.

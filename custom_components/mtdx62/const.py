@@ -70,9 +70,10 @@ BAUDRATE_OPTIONS: Final = ("1200", "2400", "4800", "9600", "19200", "38400", "57
 # Parity as the button on the sensor stores it: 0 none, 1 odd, 2 even. The names
 # differ from the N/E/O of the config flow because the select entity translates
 # its options through strings.json.
-BUS_PARITY_OPTIONS: Final = ("none", "odd", "even")
-BUS_PARITY_CODE_BY_OPTION: Final = {"none": 0, "odd": 1, "even": 2}
-BUS_PARITY_OPTION_BY_CODE: Final = {0: "none", 1: "odd", 2: "even"}
+# Modbus parity letters, the same ones the setup form uses.
+BUS_PARITY_OPTIONS: Final = ("N", "E", "O")
+BUS_PARITY_CODE_BY_OPTION: Final = {"N": 0, "E": 2, "O": 1}
+BUS_PARITY_OPTION_BY_CODE: Final = {0: "N", 2: "E", 1: "O"}
 
 # Register spaces exposed by the library that diagnostics dumps in raw form.
 RAW_DIAGNOSTIC_NAMES: Final = ("readings", "settings")

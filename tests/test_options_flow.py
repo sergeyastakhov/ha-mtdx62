@@ -57,7 +57,7 @@ async def test_unchanged_values_write_nothing(
     result = await start(hass, mock_entry)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        {CONF_UNIT_ID: 1, CONF_BAUDRATE: "9600", CONF_PARITY: "none"},
+        {CONF_UNIT_ID: 1, CONF_BAUDRATE: "9600", CONF_PARITY: "N"},
     )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
@@ -76,7 +76,7 @@ async def test_changed_values_need_confirmation(
     result = await start(hass, mock_entry)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        {CONF_UNIT_ID: 5, CONF_BAUDRATE: "19200", CONF_PARITY: "even"},
+        {CONF_UNIT_ID: 5, CONF_BAUDRATE: "19200", CONF_PARITY: "E"},
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "bus_settings_confirm"
@@ -105,7 +105,7 @@ async def test_declining_writes_nothing(
     result = await start(hass, mock_entry)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        {CONF_UNIT_ID: 5, CONF_BAUDRATE: "19200", CONF_PARITY: "even"},
+        {CONF_UNIT_ID: 5, CONF_BAUDRATE: "19200", CONF_PARITY: "E"},
     )
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {CONF_CONFIRM: False}
@@ -126,7 +126,7 @@ async def test_a_refused_write_is_reported_in_the_dialog(
     result = await start(hass, mock_entry)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        {CONF_UNIT_ID: 5, CONF_BAUDRATE: "19200", CONF_PARITY: "even"},
+        {CONF_UNIT_ID: 5, CONF_BAUDRATE: "19200", CONF_PARITY: "E"},
     )
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {CONF_CONFIRM: True}
@@ -138,17 +138,19 @@ async def test_a_refused_write_is_reported_in_the_dialog(
     assert mock_entry.data[CONF_UNIT_ID] == 1
 
 
-async def test_the_entry_reloads_after_the_dialog(
+async def test_the_entry_is_not_reloaded_after_the_dialog(
     hass: HomeAssistant, mock_entry: MockConfigEntry
 ) -> None:
-    """Saving the dialog makes the entry pick up its new state."""
+    """One reload per reconfigure, none for a dialog that changed nothing."""
     await setup(hass, mock_entry)
+    coordinator = mock_entry.runtime_data
 
     result = await start(hass, mock_entry)
     await hass.config_entries.options.async_configure(
         result["flow_id"],
-        {CONF_UNIT_ID: 1, CONF_BAUDRATE: "9600", CONF_PARITY: "none"},
+        {CONF_UNIT_ID: 1, CONF_BAUDRATE: "9600", CONF_PARITY: "N"},
     )
     await hass.async_block_till_done()
 
     assert mock_entry.state is ConfigEntryState.LOADED
+    assert mock_entry.runtime_data is coordinator

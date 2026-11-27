@@ -20,6 +20,7 @@ from mtdx62_modbus_library import (
 )
 
 from .const import (
+    BUS_PARITY_OPTION_BY_CODE,
     DOMAIN,
     HEALTHY_STATUS_CODE,
     ISSUE_BUS_SETTINGS_CHANGED,
@@ -232,7 +233,7 @@ class Mtdx62Coordinator(DataUpdateCoordinator[Readings]):
                 "name": self.config_entry.title,
                 "address": str(unit_id),
                 "baudrate": str(baudrate),
-                "parity": str(parity),
+                "parity": BUS_PARITY_OPTION_BY_CODE.get(parity, str(parity)),
             },
         )
         self._bus_issue_raised = True

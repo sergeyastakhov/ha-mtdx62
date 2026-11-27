@@ -78,32 +78,6 @@
       "reconfigure_successful": "Connection settings updated."
     }
   },
-  "selector": {
-    "model": {
-      "options": {
-        "mtd062-mb": "MTD062-MB (5.8 GHz)",
-        "mtd262-mb": "MTD262-MB (24 GHz)"
-      }
-    },
-    "baudrate": {
-      "options": {
-        "1200": "1200",
-        "2400": "2400",
-        "4800": "4800",
-        "9600": "9600",
-        "19200": "19200",
-        "38400": "38400",
-        "57600": "57600"
-      }
-    },
-    "parity": {
-      "options": {
-        "none": "None",
-        "odd": "Odd",
-        "even": "Even"
-      }
-    }
-  },
   "entity": {
     "binary_sensor": {
       "presence": {
