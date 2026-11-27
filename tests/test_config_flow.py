@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import AsyncIterator, Generator, Mapping
 from contextlib import asynccontextmanager
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -29,6 +31,7 @@ from custom_components.mtdx62.const import (
     DEFAULT_BAUDRATE,
     DOMAIN,
     MODEL_MTD262,
+    MODELS,
     TYPE_SERIAL,
     TYPE_TCP,
 )
@@ -433,3 +436,16 @@ async def test_reconfigure_refuses_a_sensor_another_entry_already_has(
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
     assert mock_entry.data[CONF_UNIT_ID] == 1
+
+
+MODEL_LABEL_FILES = ("strings.json", "translations/en.json", "translations/ru.json")
+
+
+@pytest.mark.parametrize("name", MODEL_LABEL_FILES)
+def test_every_model_has_a_label(name: str) -> None:
+    """A model without a label shows its key in the dropdown."""
+    source = Path(__file__).resolve().parent.parent / "custom_components" / "mtdx62" / name
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    labels = payload.get("selector", {}).get("model", {}).get("options", {})
+    assert set(labels) == set(MODELS), f"{name}: model labels do not match the models"
+    assert all(labels.values()), f"{name}: an empty model label"

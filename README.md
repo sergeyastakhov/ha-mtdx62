@@ -175,6 +175,10 @@ register values and firmware versions, with the serial port path redacted.
 
 ## Troubleshooting
 
+- **Everything blinks after enabling or disabling an entity** — that is Home Assistant, not this
+  integration: its entity registry handler reloads the whole config entry 30 seconds after the last
+  change of disabled_by, and a reload recreates every entity of the device. It happens once per
+  change, and only for entities that ship disabled.
 - **"Could not reach the sensor"** — check the address on the bus, the baud rate and parity, and
   that no other program holds the serial port.
 - **"Could not open this connection"** — the port exists but will not open. Two causes are common

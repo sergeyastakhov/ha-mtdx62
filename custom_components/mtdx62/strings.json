@@ -198,5 +198,13 @@
         }
       }
     }
+  },
+  "selector": {
+    "model": {
+      "options": {
+        "mtd062-mb": "MTD062-MB (5.8 GHz)",
+        "mtd262-mb": "MTD262-MB (24 GHz)"
+      }
+    }
   }
 }
